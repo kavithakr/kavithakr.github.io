@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logistic Regression — CS-OLabs NextG</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+    --ink:       #0f172a;
+    --ink-2:     #334155;
+    --ink-3:     #64748b;
+    --surface:   #ffffff;
+    --bg:        #f0f4f8;
+    --border:    #cbd5e1;
+    --navy:      #1e3a5f;
+    --navy-l:    #2d5286;
+    --accent:    #2563eb;
+    --accent-l:  #dbeafe;
+    --green:     #059669;
+    --green-l:   #d1fae5;
+    --amber:     #f59e0b;
+    --amber-l:   #fef3c7;
+    --red:       #dc2626;
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+    --shadow:    0 4px 12px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.06);
+    --mono:      'Consolas','Courier New',monospace;
+}
+
+/* ── Reset & base ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* ── Page header ───────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-l) 100%);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--accent);
+    box-shadow: var(--shadow);
+}
+.page-header .title-block .eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #93c5fd;
+    font-family: var(--mono);
+}
+.page-header .title-block h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+}
+.page-header .header-badges {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.hbadge {
+    font-size: 9px;
+    font-weight: 700;
+    font-family: var(--mono);
+    letter-spacing: .06em;
+    padding: 3px 9px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+.hbadge-blue  { background:#1e40af; color:#bfdbfe; }
+.hbadge-green { background:#14532d; color:#bbf7d0; }
+
+/* ── Main grid ─────────────────────────────────────────────────── */
+.main-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    gap: 12px;
+    padding: 12px 16px;
+    min-height: calc(100vh - 58px);
+}
+@media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Panel card ────────────────────────────────────────────────── */
+.panel {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.panel-header {
+    background: var(--navy);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.panel-header .panel-icon {
+    width: 22px; height: 22px;
+    background: rgba(255,255,255,.12);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+.panel-header .panel-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-family: var(--mono);
+}
+.panel-body { padding: 12px; flex: 1; overflow: hidden; }
+.panel-body.scrollable { overflow-y: auto; }
+
+/* ── Left panel controls ───────────────────────────────────────── */
+.section-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 5px;
+    margin-top: 10px;
+    font-family: var(--mono);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.section-label::after {
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--border);
+}
+.section-label:first-child { margin-top: 0; }
+
+.btn-group-trio {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.btn-trio {
+    padding: 5px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+}
+.btn-trio:hover { border-color: var(--accent); color: var(--accent); }
+.btn-trio.active-preset { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-trio.active-random { background: var(--ink-2); border-color: var(--ink-2); color: #fff; }
+.btn-trio.active-custom { background: var(--green); border-color: var(--green); color: #fff; }
+.btn-active { background:var(--accent)!important; border-color:var(--accent)!important; color:#fff!important; }
+
+.param-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    gap: 6px;
+}
+.param-label {
+    font-size: 10px;
+    color: var(--ink-2);
+    flex: 1;
+    min-width: 0;
+}
+.param-control {
+    flex-shrink: 0;
+    width: 80px;
+}
+.ctrl {
+    width: 100%;
+    font-size: 10px;
+    padding: 3px 6px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color .15s;
+}
+.ctrl:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-l); }
+
+/* data table */
+.data-table-wrap {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+}
+.data-table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    font-family: var(--mono);
+}
+.data-table-wrap th {
+    background: var(--accent-l);
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 7px;
+    position: sticky;
+    top: 0;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+.data-table-wrap td { padding: 2px 7px; border-bottom: 1px solid #f1f5f9; }
+.data-table-wrap tr.table-secondary td { background: #f0fdf4; color: #065f46; }
+
+/* state displays */
+.state-card {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+.state-card .state-label { font-size: 9px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .07em; font-family: var(--mono); }
+.state-card .state-value { font-size: 11px; font-weight: 700; color: var(--navy); font-family: var(--mono); }
+.state-card.loss .state-value { color: var(--amber); }
+
+/* upload box */
+.upload-box {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    background: #f8fafc;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.upload-box label { font-size: 9px; font-weight: 700; color: var(--ink-2); display: block; margin-bottom: 4px; }
+.hidden { display: none !important; }
+
+/* ── Code editor ───────────────────────────────────────────────── */
+.editor-wrap {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.editor-window {
+    width: 100%;
+    height: 330px;
+    background: #0f172a;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.5;
+}
+.code-table { border-collapse: collapse; width: 100%; min-width: max-content; white-space: pre; }
+.code-table tr { vertical-align: top; }
+.ln {
+    text-align: right;
+    padding: 0 8px 0 4px;
+    color: #475569;
+    border-right: 1px solid #1e293b;
+    user-select: none;
+    position: sticky;
+    left: 0;
+    background: #0f172a;
+    min-width: 32px;
+    line-height: 1.5;
+    font-size: 9px;
+}
+.lc { padding: 0 8px; color: #cbd5e1; white-space: pre; line-height: 1.5; }
+.highlighted-row .ln { background: var(--accent); color: #fff; border-right-color: var(--accent); }
+.highlighted-row .lc { background: #1e3a5f; color: #e2e8f0; }
+.dimmed-row .ln { color: #334155; background: #0f172a; border-right-color: #1e293b; }
+.dimmed-row .lc { color: #334155; background: #0f172a; }
+
+/* ── Math panel ────────────────────────────────────────────────── */
+.math-window {
+    width: 100%;
+    height: 330px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow-y: auto;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+.math-section {
+    border-radius: var(--radius-sm);
+    padding: 5px 7px;
+    margin-bottom: 4px;
+    border-left: 3px solid transparent;
+    transition: all .2s;
+}
+.math-section.math-active {
+    background: var(--amber-l);
+    border-left-color: var(--amber);
+}
+.math-section h6 {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-family: var(--mono);
+    margin-bottom: 3px;
+}
+.math-section .formula {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: #f1f5f9;
+    border-left: 3px solid var(--navy);
+    padding: 4px 8px;
+    border-radius: 0 4px 4px 0;
+    display: block;
+    margin: 3px 0;
+    color: var(--navy);
+}
+.math-section .note { font-size: 9px; color: var(--ink-3); line-height: 1.4; }
+
+/* ── Tabs ──────────────────────────────────────────────────────── */
+.view-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    background: var(--bg);
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+}
+.tab-btn {
+    flex: 1;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--mono);
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.tab-btn.active {
+    background: var(--navy);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+.tab-btn:not(.active):hover { background: var(--border); color: var(--ink-2); }
+
+/* ── Nav buttons ───────────────────────────────────────────────── */
+.nav-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.nav-btn {
+    padding: 6px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--mono);
+    border-radius: var(--radius-sm);
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: all .15s;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.nav-btn-start {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+    flex: 1;
+}
+.nav-btn-start:hover { opacity: .88; }
+.nav-btn-end {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+    flex: 1;
+}
+.nav-btn-end:hover { opacity: .88; }
+.nav-btn-prev, .nav-btn-next {
+    background: var(--surface);
+    color: var(--ink-2);
+    border-color: var(--border);
+    flex: 1;
+}
+.nav-btn-prev:hover, .nav-btn-next:hover {
+    background: var(--bg);
+    border-color: var(--navy);
+    color: var(--navy);
+}
+
+/* ── Step counter + calc ───────────────────────────────────────── */
+.step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+.step-header .step-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    font-family: var(--mono);
+}
+.step-badge {
+    font-size: 9px;
+    font-weight: 700;
+    font-family: var(--mono);
+    background: var(--navy);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+.calc-box {
+    background: #0f172a;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #1e293b;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #94a3b8;
+    white-space: pre-wrap;
+    height: 185px;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+.calc-box .calc-title {
+    color: #38bdf8;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+}
+.calc-box .calc-body { color: #cbd5e1; }
+
+/* ── Canvas ────────────────────────────────────────────────────── */
+#sigmoid-canvas {
+    width: 100%;
+    height: 280px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    display: block;
+}
+
+/* ── Step summary ──────────────────────────────────────────────── */
+.step-summary-box {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 10.5px;
+    min-height: 58px;
+}
+
+/* ── Metrics row ───────────────────────────────────────────────── */
+.metrics-strip {
+    background: var(--surface);
+    border-top: 1.5px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.metrics-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-family: var(--mono);
+    margin-right: 4px;
+}
+.metric-card {
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    text-align: center;
+    border: 1.5px solid;
+    min-width: 80px;
+}
+.metric-card .mc-label {
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    font-family: var(--mono);
+    display: block;
+    margin-bottom: 1px;
+}
+.metric-card .mc-value {
+    font-size: 15px;
+    font-weight: 800;
+    font-family: var(--mono);
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="page-header">
+    <div class="title-block">
+        <div class="eyebrow">CS-OLabs NextG &nbsp;·&nbsp; Classification</div>
+        <h1>Logistic Regression</h1>
+    </div>
+    <div class="header-badges">
+        <span class="hbadge hbadge-blue">Gradient Descent</span>
+        <span class="hbadge hbadge-blue">Sigmoid</span>
+        <span class="hbadge hbadge-green">SDG 4</span>
+    </div>
+</header>
+
+<!-- ══ MAIN GRID ══ -->
+<div class="main-grid">
+
+    <!-- ── LEFT: Dataset & Parameters ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-icon">📊</div>
+            <span class="panel-title">Dataset &amp; Parameters</span>
+        </div>
+        <div class="panel-body scrollable">
+
+            <div class="section-label">Data source</div>
+            <div class="btn-group-trio">
+                <button id="presetBtn" class="btn-trio" onclick="setActive('presetBtn')">Preset</button>
+                <button id="randomBtn" class="btn-trio" onclick="setActive('randomBtn')">Random</button>
+                <button id="customBtn" class="btn-trio" onclick="setActive('customBtn')">Custom</button>
+            </div>
+
+            <div id="upload-box" class="upload-box hidden">
+                <label>Upload CSV / Excel</label>
+                <input type="file" id="fileInput" class="ctrl mb-1" accept=".csv,.xlsx,.xls">
+                <div style="font-size:9px;color:var(--ink-3);margin-bottom:4px;">Columns: x, y (0 or 1)</div>
+                <button id="submitFile" class="btn-trio" style="width:100%;background:var(--accent);color:#fff;border-color:var(--accent);">Load File</button>
+            </div>
+
+            <div id="table-box" class="data-table-wrap hidden">
+                <table>
+                    <thead id="thead"></thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+
+            <div class="section-label">Hyperparameters</div>
+
+            <div class="param-row">
+                <span class="param-label">Learning rate &alpha;</span>
+                <div class="param-control"><input id="lrInput" class="ctrl" value="0.01"></div>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Iterations</span>
+                <div class="param-control"><input id="iterInput" class="ctrl" value="100000"></div>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Steps shown</span>
+                <div class="param-control">
+                    <select id="stepsInput" class="ctrl">
+                        <option value="5">5</option>
+                        <option value="8" selected>8</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Threshold &tau;</span>
+                <div class="param-control"><input id="thrInput" class="ctrl" value="0.5"></div>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Train / Test</span>
+                <div class="param-control">
+                    <select id="splitInput" class="ctrl">
+                        <option value="70">70 : 30</option>
+                        <option value="80" selected>80 : 20</option>
+                        <option value="60">60 : 40</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-label">Current state</div>
+
+            <div class="state-card">
+                <span class="state-label">Weight w</span>
+                <input id="weightDisplay" class="state-value" style="background:none;border:none;text-align:right;width:90px;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
+            </div>
+            <div class="state-card">
+                <span class="state-label">Bias b</span>
+                <input id="biasDisplay" class="state-value" style="background:none;border:none;text-align:right;width:90px;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
+            </div>
+            <div class="state-card loss">
+                <span class="state-label">Loss L</span>
+                <input id="lossDisplay" class="state-value" style="background:none;border:none;text-align:right;width:90px;font-size:11px;font-weight:700;color:var(--amber);font-family:var(--mono);" readonly value="—">
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── CENTER: Code / Math ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-icon">⚙️</div>
+            <span class="panel-title">Source Code Execution</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;">
+
+            <div class="view-tabs">
+                <button class="tab-btn active" id="tab-code" onclick="switchTab('code')">
+                    💻 Source Code
+                </button>
+                <button class="tab-btn" id="tab-math" onclick="switchTab('math')">
+                    Σ Math Formulas
+                </button>
+            </div>
+
+            <!-- Code view -->
+            <div id="view-code">
+                <div class="editor-wrap">
+                    <div class="editor-window">
+                        <table id="code-table" class="code-table"></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Math view -->
+            <div id="view-math" class="hidden">
+                <div class="math-window">
+
+                    <div id="math-init" class="math-section">
+                        <h6>① Initialisation</h6>
+                        <span class="note">Weights start at zero before any training.</span>
+                        <code class="formula">w = 0 ,&nbsp;&nbsp; b = 0</code>
+                    </div>
+
+                    <div id="math-linear" class="math-section">
+                        <h6>② Linear Combination — Step 4</h6>
+                        <span class="note">Computes the raw score for each sample.</span>
+                        <code class="formula">zᵢ = w · xᵢ + b &nbsp;&nbsp; for i = 1…n</code>
+                    </div>
+
+                    <div id="math-sigmoid" class="math-section">
+                        <h6>③ Sigmoid Function — Step 5</h6>
+                        <span class="note">Maps z ∈ (−∞, +∞) to probability ∈ (0,1). σ(0)=0.5 · σ(+5)≈0.993 · σ(−5)≈0.007</span>
+                        <code class="formula">ŷᵢ = σ(zᵢ) = 1 / (1 + e<sup>−zᵢ</sup>)</code>
+                    </div>
+
+                    <div id="math-loss" class="math-section">
+                        <h6>④ Binary Cross-Entropy Loss — Step 6</h6>
+                        <span class="note">Penalises confident wrong predictions. L → 0 when ŷ matches y perfectly.</span>
+                        <code class="formula">L(w,b) = −(1/n) Σ [ yᵢ log(ŷᵢ) + (1−yᵢ) log(1−ŷᵢ) ]</code>
+                    </div>
+
+                    <div id="math-gradients" class="math-section">
+                        <h6>⑤ Gradients — Step 7</h6>
+                        <span class="note">Direction of steepest increase in loss. We move against the gradient.</span>
+                        <code class="formula">∂L/∂w = (1/n) Σ (ŷᵢ − yᵢ) · xᵢ</code>
+                        <code class="formula">∂L/∂b = (1/n) Σ (ŷᵢ − yᵢ)</code>
+                    </div>
+
+                    <div id="math-update" class="math-section">
+                        <h6>⑥ Parameter Update — Step 8</h6>
+                        <span class="note">α = learning rate. Small α → slow but stable. Large α → fast but may overshoot.</span>
+                        <code class="formula">w ← w − α · ∂L/∂w</code>
+                        <code class="formula">b ← b − α · ∂L/∂b</code>
+                    </div>
+
+                    <div id="math-boundary" class="math-section">
+                        <h6>⑦ Decision Boundary — Step 9</h6>
+                        <span class="note">The vertical threshold crossing on the sigmoid curve.</span>
+                        <code class="formula">σ(wx+b) = 0.5 ⟹ wx+b = 0 ⟹ x* = −b/w</code>
+                    </div>
+
+                    <div id="math-predict" class="math-section">
+                        <h6>⑧ Prediction</h6>
+                        <code class="formula">ŷ = 1 if σ(wx+b) ≥ τ else 0 &nbsp;&nbsp; (τ = threshold)</code>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="nav-row">
+                <button id="startBtn" class="nav-btn nav-btn-start">▶ Start</button>
+                <button id="prevBtn"  class="nav-btn nav-btn-prev">◀ Prev</button>
+                <button id="nextBtn"  class="nav-btn nav-btn-next">Next ▶</button>
+                <button id="endBtn"   class="nav-btn nav-btn-end">End ▶▶</button>
+            </div>
+
+            <div class="step-header">
+                <span class="step-label">Intermediate Computation</span>
+                <span id="step-counter" class="step-badge">Step 0 / 0</span>
+            </div>
+            <div id="calc" class="calc-box">
+                <span style="color:#475569;">Load a dataset and press <span style="color:#38bdf8;">Start</span>.</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── RIGHT: Visualization ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-icon">📈</div>
+            <span class="panel-title">Real-Time Visualization</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;">
+
+            <div>
+                <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Sigmoid Curve</div>
+                <canvas id="sigmoid-canvas"></canvas>
+            </div>
+
+            <div>
+                <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Step Summary</div>
+                <div id="step-summary" class="step-summary-box">
+                    <span style="color:var(--ink-3);">Awaiting training…</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ══ METRICS STRIP ══ -->
+<div class="metrics-strip">
+    <span class="metrics-label">Validation</span>
+    <div id="metrics" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+</div>
+
+<script>
+/* ── Tab switcher ── */
+function switchTab(tab) {
+    const isCode = tab === 'code';
+    document.getElementById('view-code').classList.toggle('hidden', !isCode);
+    document.getElementById('view-math').classList.toggle('hidden',  isCode);
+    document.getElementById('tab-code').classList.toggle('active',  isCode);
+    document.getElementById('tab-math').classList.toggle('active', !isCode);
+    if (!isCode) {
+        const a = document.querySelector('.math-section.math-active');
+        if (a) a.scrollIntoView({block:'nearest',behavior:'smooth'});
+    } else {
+        const h = document.querySelector('.highlighted-row');
+        if (h) h.scrollIntoView({block:'center',behavior:'smooth'});
+    }
+}
+/* ── Dataset button active state ── */
+function setActive(id) {
+    ['presetBtn','randomBtn','customBtn'].forEach(b => {
+        document.getElementById(b).classList.remove('btn-active','active-preset','active-random','active-custom');
+    });
+    const map = {presetBtn:'active-preset',randomBtn:'active-random',customBtn:'active-custom'};
+    document.getElementById(id).classList.add(map[id]);
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="lr_script.js"></script>
+</body>
+</html>

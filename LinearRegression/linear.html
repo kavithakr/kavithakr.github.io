@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linear Regression — CS-OLabs NextG</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+/* ── Design tokens (same as logistic regression) ──────────────── */
+:root {
+    --ink:       #0f172a;
+    --ink-2:     #334155;
+    --ink-3:     #64748b;
+    --surface:   #ffffff;
+    --bg:        #f0f4f8;
+    --border:    #cbd5e1;
+    --navy:      #1e3a5f;
+    --navy-l:    #2d5286;
+    --accent:    #2563eb;
+    --accent-l:  #dbeafe;
+    --green:     #059669;
+    --green-l:   #d1fae5;
+    --amber:     #f59e0b;
+    --amber-l:   #fef3c7;
+    --red:       #dc2626;
+    --radius-sm: 6px;
+    --radius:    10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+    --shadow:    0 4px 12px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.06);
+    --mono:      'Consolas','Courier New',monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* ── Page header ───────────────────────────────────────────────── */
+.page-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-l) 100%);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--accent);
+    box-shadow: var(--shadow);
+}
+.page-header .eyebrow {
+    font-size: 9px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: #93c5fd; font-family: var(--mono);
+}
+.page-header h1 {
+    font-size: 18px; font-weight: 700; color: #fff;
+    letter-spacing: -.02em; line-height: 1.2;
+}
+.header-badges { display: flex; gap: 8px; align-items: center; }
+.hbadge {
+    font-size: 9px; font-weight: 700; font-family: var(--mono);
+    letter-spacing: .06em; padding: 3px 9px; border-radius: 20px; text-transform: uppercase;
+}
+.hbadge-blue  { background: #1e40af; color: #bfdbfe; }
+.hbadge-green { background: #14532d; color: #bbf7d0; }
+
+/* ── Main grid ─────────────────────────────────────────────────── */
+.main-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    gap: 12px;
+    padding: 12px 16px;
+    min-height: calc(100vh - 58px);
+}
+@media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+/* ── Panel card ────────────────────────────────────────────────── */
+.panel {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-header {
+    background: var(--navy); padding: 8px 14px;
+    display: flex; align-items: center; gap: 8px;
+}
+.panel-icon {
+    width: 22px; height: 22px; background: rgba(255,255,255,.12);
+    border-radius: 5px; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; flex-shrink: 0;
+}
+.panel-title {
+    font-size: 10px; font-weight: 700; color: #fff;
+    text-transform: uppercase; letter-spacing: .08em; font-family: var(--mono);
+}
+.panel-body { padding: 12px; flex: 1; overflow: hidden; }
+.panel-body.scrollable { overflow-y: auto; }
+
+/* ── Left panel controls ───────────────────────────────────────── */
+.section-label {
+    font-size: 9px; font-weight: 700; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .1em;
+    margin-bottom: 5px; margin-top: 10px;
+    font-family: var(--mono); display: flex; align-items: center; gap: 5px;
+}
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.section-label:first-child { margin-top: 0; }
+
+.btn-group-trio { display: grid; grid-template-columns:1fr 1fr 1fr; gap:4px; margin-bottom:8px; }
+.btn-trio {
+    padding: 5px 4px; font-size: 10px; font-weight: 600;
+    border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--ink-2); cursor: pointer; transition: all .15s; text-align: center;
+}
+.btn-trio:hover { border-color: var(--accent); color: var(--accent); }
+.btn-active { background: var(--accent) !important; border-color: var(--accent) !important; color: #fff !important; }
+
+.param-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; gap: 6px; }
+.param-label { font-size: 10px; color: var(--ink-2); flex: 1; min-width: 0; }
+.param-control { flex-shrink: 0; width: 80px; }
+.ctrl {
+    width: 100%; font-size: 10px; padding: 3px 6px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--ink); font-family: var(--mono);
+    outline: none; transition: border-color .15s;
+}
+.ctrl:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-l); }
+
+.data-table-wrap {
+    max-height: 200px; overflow-y: auto;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); margin-bottom: 8px;
+}
+.data-table-wrap table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: var(--mono); }
+.data-table-wrap th {
+    background: var(--accent-l); color: var(--accent); font-size: 9px;
+    font-weight: 700; padding: 3px 7px; position: sticky; top: 0;
+    text-transform: uppercase; letter-spacing: .05em;
+}
+.data-table-wrap td { padding: 2px 7px; border-bottom: 1px solid #f1f5f9; }
+
+.state-card {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 5px 8px;
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+}
+.state-label { font-size: 9px; color: var(--ink-3); text-transform: uppercase; letter-spacing:.07em; font-family:var(--mono); }
+.state-value-field {
+    background: none; border: none; text-align: right; width: 100px;
+    font-size: 11px; font-weight: 700; color: var(--navy); font-family: var(--mono);
+}
+
+.upload-box {
+    border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+    padding: 8px; background: #f8fafc; margin-bottom: 8px; text-align: center;
+}
+.upload-box .upload-label { font-size: 9px; font-weight: 700; color: var(--ink-2); display: block; margin-bottom: 4px; }
+.hidden { display: none !important; }
+
+/* ── Code editor (dark theme) ──────────────────────────────────── */
+.editor-wrap { border: 1.5px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 10px; }
+.editor-window {
+    width: 100%; height: 370px; background: #0f172a;
+    overflow: auto; font-family: var(--mono); font-size: 10px; line-height: 1.5;
+}
+/* code-grid layout: same as original but dark themed */
+.code-grid {
+    display: grid;
+    grid-template-columns: minmax(28px, auto) 1fr;
+    column-gap: 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 0;
+}
+.line-number {
+    text-align: right;
+    color: #475569;
+    user-select: none;
+    border-right: 1px solid #1e293b;
+    padding: 0 8px 0 4px;
+    background: #0f172a;
+    font-size: 9px;
+    line-height: 1.5;
+}
+.code-line {
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 0 8px;
+    color: #cbd5e1;
+    line-height: 1.5;
+    cursor: pointer;
+}
+.highlighted-line { background: #1e3a5f !important; color: #e2e8f0 !important; }
+.highlighted-gutter { background: var(--accent) !important; color: #fff !important; }
+
+/* ── Nav buttons ───────────────────────────────────────────────── */
+.nav-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.nav-btn {
+    padding: 6px 16px; font-size: 10px; font-weight: 700;
+    font-family: var(--mono); border-radius: var(--radius-sm);
+    border: 1.5px solid transparent; cursor: pointer; transition: all .15s;
+    letter-spacing: .04em; text-transform: uppercase; flex: 1;
+}
+.nav-btn-start { background: var(--red); color: #fff; border-color: var(--red); }
+.nav-btn-start:hover { opacity: .88; }
+.nav-btn-end { background: var(--navy); color: #fff; border-color: var(--navy); }
+.nav-btn-end:hover { opacity: .88; }
+.nav-btn-prev, .nav-btn-next { background: var(--surface); color: var(--ink-2); border-color: var(--border); }
+.nav-btn-prev:hover, .nav-btn-next:hover { background: var(--bg); border-color: var(--navy); color: var(--navy); }
+
+/* ── Computation panel (dark) ──────────────────────────────────── */
+.step-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.step-label { font-size: 9px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; font-family: var(--mono); }
+.step-badge { font-size: 9px; font-weight: 700; font-family: var(--mono); background: var(--navy); color: #fff; padding: 2px 8px; border-radius: 20px; }
+.calc-box {
+    background: #0f172a; border-radius: var(--radius-sm);
+    border: 1.5px solid #1e293b; padding: 8px 10px;
+    font-family: var(--mono); font-size: 10px; color: #94a3b8;
+    white-space: pre-wrap; height: 120px; overflow-y: auto; line-height: 1.6;
+}
+.calc-title { color: #38bdf8; font-weight: 700; display: block; margin-bottom: 4px; font-size: 10px; }
+.calc-body { color: #cbd5e1; display: block; }
+
+/* ── Canvas ────────────────────────────────────────────────────── */
+#regressionCanvas {
+    width: 100%; height: 300px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    display: block;
+}
+
+/* ── Metrics strip ─────────────────────────────────────────────── */
+.metrics-strip {
+    background: var(--surface); border-top: 1.5px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: center;
+    gap: 8px; flex-wrap: wrap;
+}
+.metrics-label {
+    font-size: 9px; font-weight: 700; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .1em;
+    font-family: var(--mono); margin-right: 4px;
+}
+.metric-card {
+    border-radius: var(--radius-sm); padding: 5px 14px;
+    text-align: center; border: 1.5px solid; min-width: 80px;
+}
+.metric-card .mc-label {
+    font-size: 8px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; font-family: var(--mono); display: block; margin-bottom: 1px;
+}
+.metric-card .mc-value { font-size: 15px; font-weight: 800; font-family: var(--mono); display: block; }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="page-header">
+    <div>
+        <div class="eyebrow">CS-OLabs NextG &nbsp;·&nbsp; Regression</div>
+        <h1>Linear Regression</h1>
+    </div>
+    <div class="header-badges">
+        <span class="hbadge hbadge-blue">Gradient Descent</span>
+        <span class="hbadge hbadge-blue">MSE Loss</span>
+        <span class="hbadge hbadge-green">SDG 4</span>
+    </div>
+</header>
+
+<!-- ══ MAIN GRID ══ -->
+<div class="main-grid">
+
+    <!-- ── LEFT: Dataset & Parameters ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-icon">📊</div>
+            <span class="panel-title">Dataset &amp; Parameters</span>
+        </div>
+        <div class="panel-body scrollable">
+
+            <div class="section-label">Data source</div>
+            <div class="btn-group-trio">
+                <button id="predefineBtn" class="btn-trio">Preset</button>
+                <button id="randomBtn"    class="btn-trio">Random</button>
+                <button id="customBtn"    class="btn-trio">Custom</button>
+            </div>
+
+            <div id="upload-container" class="upload-box hidden">
+                <span class="upload-label">Upload Excel File</span>
+                <input type="file" id="excelFile" class="ctrl mb-1" accept=".xlsx,.xls">
+                <button id="submitFileBtn" class="btn-trio" style="width:100%;background:var(--accent);color:#fff;border-color:var(--accent);">Load File</button>
+            </div>
+
+            <div id="data-preview-container" class="data-table-wrap hidden">
+                <table>
+                    <thead><tr><th>X</th><th>Y</th></tr></thead>
+                    <tbody id="dataTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="section-label">Hyperparameters</div>
+
+            <div class="param-row">
+                <span class="param-label">Learning rate &alpha;</span>
+                <div class="param-control"><input type="text" id="learningRateInput" class="ctrl" placeholder="0.01"></div>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Iterations</span>
+                <div class="param-control"><input type="text" id="iterationsInput" class="ctrl" placeholder="100000"></div>
+            </div>
+
+            <div class="section-label">Initial values</div>
+
+            <div class="param-row">
+                <span class="param-label">Weight w₀</span>
+                <div class="param-control"><input type="text" id="weightInput" class="ctrl" placeholder="0"></div>
+            </div>
+            <div class="param-row">
+                <span class="param-label">Bias b₀</span>
+                <div class="param-control"><input type="text" id="biasInput" class="ctrl" placeholder="0"></div>
+            </div>
+
+            <div class="section-label">Current state</div>
+
+            <div class="state-card">
+                <span class="state-label">Weight w</span>
+                <input id="weightDisplay" class="state-value-field" readonly value="0">
+            </div>
+            <div class="state-card">
+                <span class="state-label">Bias b</span>
+                <input id="biasDisplay" class="state-value-field" readonly value="0">
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── CENTER: Source Code ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-icon">⚙️</div>
+            <span class="panel-title">Source Code Execution</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;">
+
+            <div class="editor-wrap">
+                <!-- Hidden source-of-truth for linreg_script.js -->
+                <pre id="code-block" style="display:none;">def compute_loss(y_true, y_pred):
+    # mean squared error
+    n = len(y_true)
+    return (1 / n) * np.sum((y_pred - y_true) ** 2)
+
+def train_linear_regression(X, y, learning_rate, num_iterations):
+    n_samples = X.shape[0]
+    weight = 0
+    bias = 0
+    weight_hist = []
+    bias_hist = []
+    plt.figure(figsize=(10, 6))
+    x_plot = np.linspace(X.min() - 1, X.max() + 1, 100)
+
+    plt.scatter(X, y, color='red', marker='o', label='Data Points')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Regression Line during Training')
+    plt.legend()
+    plt.grid(True)
+
+    for iter in range(num_iterations):
+        y_predicted = weight * X + bias
+
+        dw = (2 / n_samples) * np.sum(X * (y_predicted - y))
+        db = (2 / n_samples) * np.sum(y_predicted - y)
+
+        weight -= learning_rate * dw
+        bias -= learning_rate * db
+        weight_hist.append(weight)
+        bias_hist.append(bias)
+
+        plot_iterations = [0, 1, 10000, 25000, 40000, 50000, 60000, 80000, 99999]
+
+        if iter in plot_iterations:
+            current_weight = weight
+            current_bias = bias
+            current_line = current_weight * x_plot + current_bias
+            plt.plot(x_plot, current_line, label=f'Iteration {iter}')
+
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    return weight_hist, bias_hist
+
+weight_hist, bias_hist = train_linear_regression(X_values, y_values,
+                                learning_rate=0.01, num_iterations=100000)
+
+#Testing
+final_weight = weight_hist[-1]
+final_bias = bias_hist[-1]
+x_plot = np.linspace(X_values.min() - 1, X_values.max() + 1, 100)
+final_line = final_weight * x_plot + final_bias
+
+predictions = final_weight * X_values + final_bias
+print(f"Predicted Values: {predictions}")</pre>
+                <div class="editor-window">
+                    <div id="code-grid" class="code-grid"></div>
+                </div>
+            </div>
+
+            <div class="nav-row">
+                <button id="startBtn" class="nav-btn nav-btn-start">▶ Start</button>
+                <button id="prevBtn"  class="nav-btn nav-btn-prev">◀ Prev</button>
+                <button id="nextBtn"  class="nav-btn nav-btn-next">Next ▶</button>
+                <button id="endBtn"   class="nav-btn nav-btn-end">End ▶▶</button>
+            </div>
+
+            <div class="step-header">
+                <span class="step-label">Intermediate Computation</span>
+            </div>
+            <div id="step" class="calc-box">
+                <span style="color:#475569;">Load a dataset and press <span style="color:#38bdf8;">Start</span>.</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── RIGHT: Visualization ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <div class="panel-icon">📈</div>
+            <span class="panel-title">Real-Time Visualization</span>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;">
+
+            <div>
+                <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Regression Line</div>
+                <canvas id="regressionCanvas" width="380" height="300"></canvas>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ══ METRICS STRIP ══ -->
+<div class="metrics-strip">
+    <span class="metrics-label">Validation</span>
+    <div class="metric-card" style="border-color:#3b82f6;background:#3b82f615;">
+        <span class="mc-label" style="color:#3b82f6;">MSE</span>
+        <span class="mc-value" id="mse-val" style="color:#3b82f6;">—</span>
+    </div>
+    <div class="metric-card" style="border-color:#7c3aed;background:#7c3aed15;">
+        <span class="mc-label" style="color:#7c3aed;">RMSE</span>
+        <span class="mc-value" id="rmse-val" style="color:#7c3aed;">—</span>
+    </div>
+    <div class="metric-card" style="border-color:#0891b2;background:#0891b215;">
+        <span class="mc-label" style="color:#0891b2;">MAE</span>
+        <span class="mc-value" id="mae-val" style="color:#0891b2;">—</span>
+    </div>
+    <div class="metric-card" style="border-color:#059669;background:#05966915;">
+        <span class="mc-label" style="color:#059669;">R² Score</span>
+        <span class="mc-value" id="r2-val" style="color:#059669;">—</span>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="linreg_script.js"></script>
+
+<!-- Compute and render metrics after training -->
+<script>
+document.getElementById('startBtn').addEventListener('click', () => {
+    setTimeout(() => {
+        if (!window.X_values || !X_values.length || !window.weight_hist || !weight_hist.length) return;
+        const w = weight_hist[weight_hist.length - 1];
+        const b = bias_hist[bias_hist.length - 1];
+        const n = X_values.length;
+        const preds = X_values.map(x => w * x + b);
+        const yMean = y_values.reduce((a,c)=>a+c,0)/n;
+        const mse  = preds.reduce((s,p,i) => s + (p-y_values[i])**2, 0) / n;
+        const mae  = preds.reduce((s,p,i) => s + Math.abs(p-y_values[i]), 0) / n;
+        const ssTot= y_values.reduce((s,y) => s + (y-yMean)**2, 0);
+        const ssRes= preds.reduce((s,p,i) => s + (y_values[i]-p)**2, 0);
+        const r2   = 1 - ssRes/ssTot;
+        document.getElementById('mse-val').textContent  = mse.toFixed(3);
+        document.getElementById('rmse-val').textContent = Math.sqrt(mse).toFixed(3);
+        document.getElementById('mae-val').textContent  = mae.toFixed(3);
+        document.getElementById('r2-val').textContent   = r2.toFixed(4);
+    }, 200);
+});
+</script>
+</body>
+</html>

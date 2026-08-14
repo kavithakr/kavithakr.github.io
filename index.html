@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ML Algorithm Visualization</title>
+<style>
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+    --ink:      #0f172a;
+    --ink-2:    #334155;
+    --ink-3:    #64748b;
+    --bg:       #f8fafc;
+    --surface:  #ffffff;
+    --border:   #e2e8f0;
+
+    /* category accents */
+    --cls-hue:  #1e3a5f;   /* classification — navy */
+    --cls-light:#eff6ff;
+    --clu-hue:  #14532d;   /* clustering — forest */
+    --clu-light:#f0fdf4;
+
+    /* card accents per algorithm */
+    --lr-col:   #2563eb;
+    --dt-col:   #7c3aed;
+    --knn-col:  #0891b2;
+    --km-col:   #d97706;
+    --ag-col:   #059669;
+
+    --radius:   10px;
+    --mono:     'Consolas', 'Courier New', monospace;
+}
+
+/* ── Reset & base ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+a { color: inherit; text-decoration: none; }
+
+/* ── Header ────────────────────────────────────────────────────── */
+header {
+    background: var(--ink);
+    color: #fff;
+    padding: 40px 5vw 36px;
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+    border-bottom: 3px solid #2563eb;
+}
+.header-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    line-height: 1.8;
+}
+.header-logo strong {
+    display: block;
+    font-size: 26px;
+    letter-spacing: -.01em;
+    color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+.header-tagline {
+    font-size: 14px;
+    color: #94a3b8;
+    max-width: 480px;
+    line-height: 1.5;
+    padding-bottom: 2px;
+}
+.header-badge {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    padding-bottom: 2px;
+}
+.badge-pill {
+    background: #1e40af;
+    color: #bfdbfe;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: .06em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+.badge-pill.green { background: #14532d; color: #bbf7d0; }
+
+/* ── How it works strip ─────────────────────────────────────────── */
+.how-strip {
+    background: #1e293b;
+    color: #cbd5e1;
+    padding: 14px 5vw;
+    display: flex;
+    gap: 0;
+    font-size: 12.5px;
+    overflow-x: auto;
+}
+.how-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    padding-right: 24px;
+}
+.how-item + .how-item::before {
+    content: '→';
+    margin-right: 24px;
+    color: #475569;
+}
+.how-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ── Main layout ─────────────────────────────────────────────────── */
+main { padding: 40px 5vw 60px; }
+
+/* ── Category section ─────────────────────────────────────────────── */
+.category {
+    margin-bottom: 48px;
+}
+.category-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+}
+.category-icon {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.classification .category-icon { background: var(--cls-light); }
+.clustering     .category-icon { background: var(--clu-light); }
+
+.category-title {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--ink);
+}
+.category-desc {
+    font-size: 13px;
+    color: var(--ink-3);
+    margin-top: 1px;
+}
+.category-count {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    background: var(--border);
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+/* ── Algorithm cards ──────────────────────────────────────────────── */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    position: relative;
+    overflow: hidden;
+}
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+}
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    border-color: var(--accent);
+}
+
+.card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.card-icon {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 12%, white);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.card-name {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -.01em;
+}
+.card-abbr {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-top: 1px;
+}
+.card-desc {
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.55;
+    flex: 1;
+}
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.tag {
+    font-size: 10.5px;
+    font-family: var(--mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent) 10%, white);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, white);
+}
+.card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+}
+.card-steps {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: var(--mono);
+}
+.launch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: opacity .15s;
+    cursor: pointer;
+}
+.launch-btn:hover { opacity: .88; }
+.launch-btn svg { width: 12px; height: 12px; }
+
+/* ── Concept strip ───────────────────────────────────────────────── */
+.concept-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 44px;
+    padding: 20px;
+    background: #f1f5f9;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+.concept-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.concept-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.concept-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 1px;
+}
+.concept-text {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    line-height: 1.45;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 5vw;
+    font-size: 12px;
+    color: var(--ink-3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+footer a { color: #2563eb; }
+
+@media (max-width: 640px) {
+    header { flex-direction: column; align-items: flex-start; }
+    .header-badge { margin-left: 0; align-items: flex-start; }
+    .cards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+    <div class="header-logo">
+        <strong>Machine Learning Visualization Framework</strong>
+        Machine Learning Visualization Framework
+    </div>
+    <div class="header-tagline">
+        Step-by-step interactive visualizations of ML algorithms. Navigate through each execution step, watch the model learn, and build genuine conceptual understanding.
+    </div>
+    <div class="header-badge">
+        <span class="badge-pill">Phase 2 — ML Algorithms</span>
+        <span class="badge-pill green">SDG 4 · Quality Education</span>
+    </div>
+</header>
+
+<!-- ══ HOW IT WORKS ══ -->
+<div class="how-strip">
+    <div class="how-item"><span class="how-num">1</span> Load or upload a dataset</div>
+    <div class="how-item"><span class="how-num">2</span> Set hyperparameters</div>
+    <div class="how-item"><span class="how-num">3</span> Press Start</div>
+    <div class="how-item"><span class="how-num">4</span> Step through code execution</div>
+    <div class="how-item"><span class="how-num">5</span> Watch the visualization update live</div>
+    <div class="how-item"><span class="how-num">6</span> Check validation metrics</div>
+</div>
+
+<main>
+
+<!-- ══ PEDAGOGICAL CONCEPTS ══ -->
+<div class="concept-strip">
+    <div class="concept-item">
+        <span class="concept-icon">🧩</span>
+        <div>
+            <div class="concept-label">Constructivist Learning</div>
+            <div class="concept-text">Build knowledge by actively stepping through algorithm execution</div>
+        </div>
+    </div>
+    <div class="concept-item">
+        <span class="concept-icon">🧠</span>
+        <div>
+            <div class="concept-label">Cognitive Load Theory</div>
+            <div class="concept-text">One computation at a time — reduces extraneous load</div>
+        </div>
+    </div>
+    <div class="concept-item">
+        <span class="concept-icon">🔬</span>
+        <div>
+            <div class="concept-label">Experiential Learning</div>
+            <div class="concept-text">Upload your own data and observe how the algorithm responds</div>
+        </div>
+    </div>
+    <div class="concept-item">
+        <span class="concept-icon">📐</span>
+        <div>
+            <div class="concept-label">Mathematical Transparency</div>
+            <div class="concept-text">Every formula computed live with actual values shown</div>
+        </div>
+    </div>
+    <div class="concept-item">
+        <span class="concept-icon">↔️</span>
+        <div>
+            <div class="concept-label">Bidirectional Navigation</div>
+            <div class="concept-text">Go forward and backward through any execution step</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ CLASSIFICATION ══ -->
+<section class="category classification">
+    <div class="category-header">
+        <div class="category-icon">🎯</div>
+        <div>
+            <div class="category-title">Classification</div>
+            <div class="category-desc">Supervised learning — predict a discrete class label from labelled training data</div>
+        </div>
+        <div class="category-count">3 algorithms</div>
+    </div>
+
+    <div class="cards">
+
+        <!-- Logistic Regression -->
+        <div class="card" style="--accent:var(--lr-col)">
+            <div class="card-top">
+                <div class="card-icon">📈</div>
+                <div>
+                    <div class="card-name">Logistic Regression</div>
+                    <div class="card-abbr">LR</div>
+                </div>
+            </div>
+            <div class="card-desc">
+                Learns a decision boundary by fitting a sigmoid curve to labelled data using gradient descent. Watch weights and bias update after every iteration as the loss decreases.
+            </div>
+            <div class="card-tags">
+                <span class="tag">Sigmoid</span>
+                <span class="tag">Gradient Descent</span>
+                <span class="tag">Binary Cross-Entropy</span>
+                <span class="tag">Decision Boundary</span>
+            </div>
+            <div class="card-footer">
+                <span class="card-steps">⟶ ~50 execution steps</span>
+                <a href="LogisticRegression\logistic_computation.html" class="launch-btn">
+                    Open
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 6h8M6 2l4 4-4 4"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- Decision Tree -->
+        <div class="card" style="--accent:var(--dt-col)">
+            <div class="card-top">
+                <div class="card-icon">🌳</div>
+                <div>
+                    <div class="card-name">Decision Tree</div>
+                    <div class="card-abbr">DT</div>
+                </div>
+            </div>
+            <div class="card-desc">
+                Builds a tree by recursively selecting the feature with the highest information gain. The tree grows node by node as you step through the algorithm. Supports any dataset.
+            </div>
+            <div class="card-tags">
+                <span class="tag">Entropy</span>
+                <span class="tag">Information Gain</span>
+                <span class="tag">Gini Index</span>
+                <span class="tag">Recursive Split</span>
+            </div>
+            <div class="card-footer">
+                <span class="card-steps">⟶ Dynamic — grows with data</span>
+                <a href="DecisionTree/decisionTree.html" class="launch-btn">
+                    Open
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 6h8M6 2l4 4-4 4"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- KNN -->
+        <div class="card" style="--accent:var(--knn-col)">
+            <div class="card-top">
+                <div class="card-icon">📍</div>
+                <div>
+                    <div class="card-name">K-Nearest Neighbours</div>
+                    <div class="card-abbr">KNN</div>
+                </div>
+            </div>
+            <div class="card-desc">
+                Classifies a query point by finding the k closest training points and taking a majority vote. Each distance is computed and shown step by step with a labelled line on the scatter plot.
+            </div>
+            <div class="card-tags">
+                <span class="tag">Euclidean Distance</span>
+                <span class="tag">Manhattan Distance</span>
+                <span class="tag">Majority Vote</span>
+                <span class="tag">Click-to-Query</span>
+            </div>
+            <div class="card-footer">
+                <span class="card-steps">⟶ 1 step per training point</span>
+                <a href="kNN/knn.html" class="launch-btn">
+                    Open
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 6h8M6 2l4 4-4 4"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ══ CLUSTERING ══ -->
+<section class="category clustering">
+    <div class="category-header">
+        <div class="category-icon">🔵</div>
+        <div>
+            <div class="category-title">Clustering</div>
+            <div class="category-desc">Unsupervised learning — discover natural groupings in unlabelled data</div>
+        </div>
+        <div class="category-count">2 algorithms</div>
+    </div>
+
+    <div class="cards">
+
+        <!-- K-Means -->
+        <div class="card" style="--accent:var(--km-col)">
+            <div class="card-top">
+                <div class="card-icon">⚙️</div>
+                <div>
+                    <div class="card-name">K-Means Clustering</div>
+                    <div class="card-abbr">K-Means</div>
+                </div>
+            </div>
+            <div class="card-desc">
+                Iteratively assigns each point to its nearest centroid and recomputes centroids until convergence. Points are coloured one by one as their distance is computed. Supports manual centroid placement by clicking the plot.
+            </div>
+            <div class="card-tags">
+                <span class="tag">Centroids</span>
+                <span class="tag">WCSS</span>
+                <span class="tag">Convergence</span>
+                <span class="tag">Click-to-Place</span>
+            </div>
+            <div class="card-footer">
+                <span class="card-steps">⟶ 1 step per point per iteration</span>
+                <a href="kMeans/" class="launch-btn">
+                    Open
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 6h8M6 2l4 4-4 4"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- Agglomerative -->
+        <div class="card" style="--accent:var(--ag-col)">
+            <div class="card-top">
+                <div class="card-icon">🌿</div>
+                <div>
+                    <div class="card-name">Agglomerative Clustering</div>
+                    <div class="card-abbr">HAC</div>
+                </div>
+            </div>
+            <div class="card-desc">
+                Bottom-up hierarchical clustering — starts with each point as its own cluster and merges the closest pair at each step. Watch the dendrogram build merge by merge and the distance matrix update after each linkage.
+            </div>
+            <div class="card-tags">
+                <span class="tag">Single Linkage</span>
+                <span class="tag">Complete Linkage</span>
+                <span class="tag">Average Linkage</span>
+                <span class="tag">Dendrogram</span>
+            </div>
+            <div class="card-footer">
+                <span class="card-steps">⟶ 3 steps per merge</span>
+                <a href="agglomerative.html" class="launch-btn">
+                    Open
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 6h8M6 2l4 4-4 4"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ══ COMPARISON TABLE ══ -->
+<section style="margin-top:8px;">
+    <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;">
+        Algorithm Comparison
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;">
+            <thead>
+                <tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;">
+                    <th style="padding:10px 14px;text-align:left;font-weight:700;">Algorithm</th>
+                    <th style="padding:10px 14px;text-align:left;font-weight:700;">Type</th>
+                    <th style="padding:10px 14px;text-align:left;font-weight:700;">Input</th>
+                    <th style="padding:10px 14px;text-align:left;font-weight:700;">Key Hyperparameter</th>
+                    <th style="padding:10px 14px;text-align:left;font-weight:700;">What it learns</th>
+                    <th style="padding:10px 14px;text-align:left;font-weight:700;">Open</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:9px 14px;"><span style="color:#2563eb;font-weight:700;">Logistic Regression</span></td>
+                    <td style="padding:9px 14px;color:#64748b;">Supervised</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">x, y (0/1)</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">learning_rate</td>
+                    <td style="padding:9px 14px;color:#475569;">Weight w, Bias b</td>
+                    <td style="padding:9px 14px;"><a href="LogisticRegression/logistic_computation.html" style="color:#2563eb;font-size:11px;font-weight:600;">Launch →</a></td>
+                </tr>
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:9px 14px;"><span style="color:#7c3aed;font-weight:700;">Decision Tree</span></td>
+                    <td style="padding:9px 14px;color:#64748b;">Supervised</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">x1…xn, label</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">max_depth</td>
+                    <td style="padding:9px 14px;color:#475569;">Split features & thresholds</td>
+                    <td style="padding:9px 14px;"><a href="DecisionTree/decisionTree.html" style="color:#7c3aed;font-size:11px;font-weight:600;">Launch →</a></td>
+                </tr>
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:9px 14px;"><span style="color:#0891b2;font-weight:700;">K-Nearest Neighbours</span></td>
+                    <td style="padding:9px 14px;color:#64748b;">Supervised</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">x1, x2, label</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">k</td>
+                    <td style="padding:9px 14px;color:#475569;">Nothing (instance-based)</td>
+                    <td style="padding:9px 14px;"><a href="knn.html" style="color:#0891b2;font-size:11px;font-weight:600;">Launch →</a></td>
+                </tr>
+                <tr style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:9px 14px;"><span style="color:#d97706;font-weight:700;">K-Means</span></td>
+                    <td style="padding:9px 14px;color:#64748b;">Unsupervised</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">x1, x2</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">k, max_iter</td>
+                    <td style="padding:9px 14px;color:#475569;">k centroid positions</td>
+                    <td style="padding:9px 14px;"><a href="kMeans/kmeans.html" style="color:#d97706;font-size:11px;font-weight:600;">Launch →</a></td>
+                </tr>
+                <tr>
+                    <td style="padding:9px 14px;"><span style="color:#059669;font-weight:700;">Agglomerative</span></td>
+                    <td style="padding:9px 14px;color:#64748b;">Unsupervised</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">x1, x2</td>
+                    <td style="padding:9px 14px;font-family:monospace;font-size:11px;">n_clusters, linkage</td>
+                    <td style="padding:9px 14px;color:#475569;">Merge hierarchy (dendrogram)</td>
+                    <td style="padding:9px 14px;"><a href="Agglomerative/" style="color:#059669;font-size:11px;font-weight:600;">Launch →</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <span>Amrita Vishwa Vidyapeetham · ML Algorithm Visualization</span>
+    <span>Grounded in Constructivist, Cognitive Load, and Experiential Learning Theory</span>
+</footer>
+
+</body>
+</html>
