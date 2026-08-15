@@ -666,11 +666,12 @@ const PRESET = [
     {x:75,y:1},{x:80,y:1},{x:85,y:1},
 ];
 
-const setActive = id => {
+/*const setActive = id => {
     if (typeof window.setActive === 'function') window.setActive(id);
     ['presetBtn','randomBtn','customBtn'].forEach(b =>
         document.getElementById(b).classList.toggle('btn-active', b===id));
 };
+*/
 
 document.getElementById('presetBtn').onclick = () => {
     setActive('presetBtn');
