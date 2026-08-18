@@ -628,6 +628,45 @@ document.getElementById('endBtn').onclick   = () => {
     if (!STEPS.length) runTraining(); else show(STEPS.length-1);
 };
 
+/* ── Keyboard navigation — Left/Right arrow keys ── */
+function flashBtn(id) {
+    /* first remove flash from ALL nav buttons so switching between
+       prev and next always triggers a clean animation */
+    ['startBtn','prevBtn','nextBtn','endBtn'].forEach(bid => {
+        const b = document.getElementById(bid);
+        if (b) b.classList.remove('nav-btn-flash');
+    });
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    void btn.offsetWidth;   /* force reflow to restart animation */
+    btn.classList.add('nav-btn-flash');
+    btn.addEventListener('animationend', () => btn.classList.remove('nav-btn-flash'), { once: true });
+}
+
+document.addEventListener('keydown', e => {
+    /* ignore when user is typing inside an input or select */
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+    if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        flashBtn('nextBtn');
+        if (STEPS.length) show(cursor + 1);
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        flashBtn('prevBtn');
+        if (STEPS.length) show(cursor - 1);
+    } else if (e.key === 'Home') {
+        e.preventDefault();
+        flashBtn('startBtn');
+        if (!STEPS.length) runTraining(); else show(0);
+    } else if (e.key === 'End') {
+        e.preventDefault();
+        flashBtn('endBtn');
+        if (!STEPS.length) runTraining(); else show(STEPS.length - 1);
+    }
+});
+
 /* ══════════════════════════════════════════════════════════════════
    DATA LOADING
    ══════════════════════════════════════════════════════════════════ */
