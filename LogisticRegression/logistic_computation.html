@@ -274,7 +274,7 @@ body {
 .editor-window {
     width: 100%;
     height: 330px;
-    background: #0f172a;
+    background: #f8fafc;
     overflow: auto;
     font-family: var(--mono);
     font-size: 10px;
@@ -285,21 +285,21 @@ body {
 .ln {
     text-align: right;
     padding: 0 8px 0 4px;
-    color: #475569;
-    border-right: 1px solid #1e293b;
+    color: #94a3b8;
+    border-right: 2px solid #e2e8f0;
     user-select: none;
     position: sticky;
     left: 0;
-    background: #0f172a;
+    background: #f1f5f9;
     min-width: 32px;
     line-height: 1.5;
     font-size: 9px;
 }
-.lc { padding: 0 8px; color: #cbd5e1; white-space: pre; line-height: 1.5; }
+.lc { padding: 0 8px; color: #1e293b; white-space: pre; line-height: 1.5; }
 .highlighted-row .ln { background: var(--accent); color: #fff; border-right-color: var(--accent); }
-.highlighted-row .lc { background: #1e3a5f; color: #e2e8f0; }
-.dimmed-row .ln { color: #334155; background: #0f172a; border-right-color: #1e293b; }
-.dimmed-row .lc { color: #334155; background: #0f172a; }
+.highlighted-row .lc { background: var(--accent-l); color: var(--navy); font-weight: 600; }
+.dimmed-row .ln { color: #94a3b8; background: #f8fafc; border-right-color: #e2e8f0; }
+.dimmed-row .lc { color: #94a3b8; background: #f8fafc; }
 
 /* ── Math panel ────────────────────────────────────────────────── */
 .math-window {
@@ -378,6 +378,16 @@ body {
     box-shadow: var(--shadow-sm);
 }
 .tab-btn:not(.active):hover { background: var(--border); color: var(--ink-2); }
+
+/* ── Nav button keyboard flash ─────────────────────────────────── */
+@keyframes btn-flash {
+    0%   { transform: scale(.94); box-shadow: 0 0 0 3px var(--accent-l); }
+    60%  { transform: scale(.97); }
+    100% { transform: scale(1);   box-shadow: none; }
+}
+.nav-btn-flash {
+    animation: btn-flash .25s ease forwards;
+}
 
 /* ── Nav buttons ───────────────────────────────────────────────── */
 .nav-row {
@@ -615,20 +625,7 @@ body {
                 </div>
             </div>
 
-            <div class="section-label">Current state</div>
 
-            <div class="state-card">
-                <span class="state-label">Weight w</span>
-                <input id="weightDisplay" class="state-value" style="background:none;border:none;text-align:right;width:90px;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
-            </div>
-            <div class="state-card">
-                <span class="state-label">Bias b</span>
-                <input id="biasDisplay" class="state-value" style="background:none;border:none;text-align:right;width:90px;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
-            </div>
-            <div class="state-card loss">
-                <span class="state-label">Loss L</span>
-                <input id="lossDisplay" class="state-value" style="background:none;border:none;text-align:right;width:90px;font-size:11px;font-weight:700;color:var(--amber);font-family:var(--mono);" readonly value="—">
-            </div>
 
         </div>
     </div>
@@ -745,6 +742,24 @@ body {
             <div>
                 <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Sigmoid Curve</div>
                 <canvas id="sigmoid-canvas"></canvas>
+            </div>
+
+            <div>
+                <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Current State</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;">
+                    <div class="state-card" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                        <span class="state-label">Weight w</span>
+                        <input id="weightDisplay" style="background:none;border:none;width:100%;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
+                    </div>
+                    <div class="state-card" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                        <span class="state-label">Bias b</span>
+                        <input id="biasDisplay" style="background:none;border:none;width:100%;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
+                    </div>
+                    <div class="state-card loss" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                        <span class="state-label">Loss L</span>
+                        <input id="lossDisplay" style="background:none;border:none;width:100%;font-size:11px;font-weight:700;color:var(--amber);font-family:var(--mono);" readonly value="—">
+                    </div>
+                </div>
             </div>
 
             <div>
