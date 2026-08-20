@@ -12,6 +12,7 @@
     --ink-2:     #334155;
     --ink-3:     #64748b;
     --surface:   #ffffff;
+    --viz-bg:    #bbc6d6ec;
     --bg:        #f0f4f8;
     --border:    #cbd5e1;
     --navy:      #1e3a5f;
@@ -486,13 +487,13 @@ body {
     height: 280px;
     border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
-    background: var(--surface);
+    background: #f4f7fb;
     display: block;
 }
 
 /* ── Step summary ──────────────────────────────────────────────── */
 .step-summary-box {
-    background: var(--bg);
+    background: #e6ecf4;
     border: 1.5px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 8px 10px;
@@ -737,7 +738,7 @@ body {
             <div class="panel-icon">📈</div>
             <span class="panel-title">Real-Time Visualization</span>
         </div>
-        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;background:var(--viz-bg);">
 
             <div>
                 <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Sigmoid Curve</div>
@@ -747,15 +748,15 @@ body {
             <div>
                 <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Current State</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;">
-                    <div class="state-card" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                    <div class="state-card" style="flex-direction:column;align-items:flex-start;gap:2px;background:#dce4ef;">
                         <span class="state-label">Weight w</span>
                         <input id="weightDisplay" style="background:none;border:none;width:100%;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
                     </div>
-                    <div class="state-card" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                    <div class="state-card" style="flex-direction:column;align-items:flex-start;gap:2px;background:#dce4ef;">
                         <span class="state-label">Bias b</span>
                         <input id="biasDisplay" style="background:none;border:none;width:100%;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
                     </div>
-                    <div class="state-card loss" style="flex-direction:column;align-items:flex-start;gap:2px;">
+                    <div class="state-card loss" style="flex-direction:column;align-items:flex-start;gap:2px;background:#dce4ef;">
                         <span class="state-label">Loss L</span>
                         <input id="lossDisplay" style="background:none;border:none;width:100%;font-size:11px;font-weight:700;color:var(--amber);font-family:var(--mono);" readonly value="—">
                     </div>
