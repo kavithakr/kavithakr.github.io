@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Linear Regression — CS-OLabs NextG</title>
+<title>Linear Regression — Step-by-Step Algorithm Visualization</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
 /* ── Design tokens (same as logistic regression) ──────────────── */
@@ -162,41 +162,32 @@ body {
 .upload-box .upload-label { font-size: 9px; font-weight: 700; color: var(--ink-2); display: block; margin-bottom: 4px; }
 .hidden { display: none !important; }
 
-/* ── Code editor (dark theme) ──────────────────────────────────── */
+/* ── Code editor (light theme — matches logistic regression) ───── */
 .editor-wrap { border: 1.5px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 10px; }
 .editor-window {
-    width: 100%; height: 370px; background: #0f172a;
+    width: 100%; height: 370px; background: #f8fafc;
     overflow: auto; font-family: var(--mono); font-size: 10px; line-height: 1.5;
 }
-/* code-grid layout: same as original but dark themed */
-.code-grid {
-    display: grid;
-    grid-template-columns: minmax(28px, auto) 1fr;
-    column-gap: 0;
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 4px 0;
+.code-table { border-collapse: collapse; width: 100%; min-width: max-content; white-space: pre; }
+.code-table tr { vertical-align: top; }
+.ln {
+    text-align: right; padding: 0 8px 0 4px; color: #94a3b8;
+    border-right: 2px solid #e2e8f0; user-select: none;
+    position: sticky; left: 0; background: #f1f5f9;
+    min-width: 32px; line-height: 1.5; font-size: 9px;
 }
-.line-number {
-    text-align: right;
-    color: #475569;
-    user-select: none;
-    border-right: 1px solid #1e293b;
-    padding: 0 8px 0 4px;
-    background: #0f172a;
-    font-size: 9px;
-    line-height: 1.5;
+.lc { padding: 0 8px; color: #1e293b; white-space: pre; line-height: 1.5; }
+.highlighted-row .ln { background: var(--accent); color: #fff; border-right-color: var(--accent); }
+.highlighted-row .lc { background: var(--accent-l); color: var(--navy); font-weight: 600; }
+.dimmed-row .ln { color: #94a3b8; background: #f8fafc; border-right-color: #e2e8f0; }
+.dimmed-row .lc { color: #94a3b8; background: #f8fafc; }
+/* nav button flash for keyboard */
+@keyframes btn-flash {
+    0%   { transform: scale(.94); box-shadow: 0 0 0 3px var(--accent-l); }
+    60%  { transform: scale(.97); }
+    100% { transform: scale(1);   box-shadow: none; }
 }
-.code-line {
-    white-space: pre-wrap;
-    word-break: break-word;
-    padding: 0 8px;
-    color: #cbd5e1;
-    line-height: 1.5;
-    cursor: pointer;
-}
-.highlighted-line { background: #1e3a5f !important; color: #e2e8f0 !important; }
-.highlighted-gutter { background: var(--accent) !important; color: #fff !important; }
+.nav-btn-flash { animation: btn-flash .25s ease forwards; }
 
 /* ── Nav buttons ───────────────────────────────────────────────── */
 .nav-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
@@ -262,7 +253,7 @@ body {
 <!-- ══ HEADER ══ -->
 <header class="page-header">
     <div>
-        <div class="eyebrow">CS-OLabs NextG &nbsp;·&nbsp; Regression</div>
+        <div class="eyebrow">ML Algorithm Visualization &nbsp;·&nbsp; Regression</div>
         <h1>Linear Regression</h1>
     </div>
     <div class="header-badges">
@@ -325,16 +316,7 @@ body {
                 <div class="param-control"><input type="text" id="biasInput" class="ctrl" placeholder="0"></div>
             </div>
 
-            <div class="section-label">Current state</div>
 
-            <div class="state-card">
-                <span class="state-label">Weight w</span>
-                <input id="weightDisplay" class="state-value-field" readonly value="0">
-            </div>
-            <div class="state-card">
-                <span class="state-label">Bias b</span>
-                <input id="biasDisplay" class="state-value-field" readonly value="0">
-            </div>
 
         </div>
     </div>
@@ -348,66 +330,8 @@ body {
         <div class="panel-body" style="display:flex;flex-direction:column;">
 
             <div class="editor-wrap">
-                <!-- Hidden source-of-truth for linreg_script.js -->
-                <pre id="code-block" style="display:none;">def compute_loss(y_true, y_pred):
-    # mean squared error
-    n = len(y_true)
-    return (1 / n) * np.sum((y_pred - y_true) ** 2)
-
-def train_linear_regression(X, y, learning_rate, num_iterations):
-    n_samples = X.shape[0]
-    weight = 0
-    bias = 0
-    weight_hist = []
-    bias_hist = []
-    plt.figure(figsize=(10, 6))
-    x_plot = np.linspace(X.min() - 1, X.max() + 1, 100)
-
-    plt.scatter(X, y, color='red', marker='o', label='Data Points')
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.title('Regression Line during Training')
-    plt.legend()
-    plt.grid(True)
-
-    for iter in range(num_iterations):
-        y_predicted = weight * X + bias
-
-        dw = (2 / n_samples) * np.sum(X * (y_predicted - y))
-        db = (2 / n_samples) * np.sum(y_predicted - y)
-
-        weight -= learning_rate * dw
-        bias -= learning_rate * db
-        weight_hist.append(weight)
-        bias_hist.append(bias)
-
-        plot_iterations = [0, 1, 10000, 25000, 40000, 50000, 60000, 80000, 99999]
-
-        if iter in plot_iterations:
-            current_weight = weight
-            current_bias = bias
-            current_line = current_weight * x_plot + current_bias
-            plt.plot(x_plot, current_line, label=f'Iteration {iter}')
-
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-    return weight_hist, bias_hist
-
-weight_hist, bias_hist = train_linear_regression(X_values, y_values,
-                                learning_rate=0.01, num_iterations=100000)
-
-#Testing
-final_weight = weight_hist[-1]
-final_bias = bias_hist[-1]
-x_plot = np.linspace(X_values.min() - 1, X_values.max() + 1, 100)
-final_line = final_weight * x_plot + final_bias
-
-predictions = final_weight * X_values + final_bias
-print(f"Predicted Values: {predictions}")</pre>
                 <div class="editor-window">
-                    <div id="code-grid" class="code-grid"></div>
+                    <table id="code-table" class="code-table"></table>
                 </div>
             </div>
 
@@ -434,11 +358,50 @@ print(f"Predicted Values: {predictions}")</pre>
             <div class="panel-icon">📈</div>
             <span class="panel-title">Real-Time Visualization</span>
         </div>
-        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:10px;background:#eef2f7;">
 
+            <!-- Current State -->
+            <div>
+                <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Current State</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <div class="state-card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:6px;background:#dce4ef;">
+                        <span class="state-label">Weight w</span>
+                        <input id="weightDisplay" style="background:none;border:none;text-align:right;width:80px;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
+                    </div>
+                    <div class="state-card" style="flex-direction:row;align-items:center;justify-content:space-between;gap:6px;background:#dce4ef;">
+                        <span class="state-label">Bias b</span>
+                        <input id="biasDisplay" style="background:none;border:none;text-align:right;width:80px;font-size:11px;font-weight:700;color:var(--navy);font-family:var(--mono);" readonly value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regression canvas -->
             <div>
                 <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Regression Line</div>
-                <canvas id="regressionCanvas" width="380" height="300"></canvas>
+                <canvas id="regressionCanvas" width="380" height="250" style="background:#f4f7fb;"></canvas>
+            </div>
+
+            <!-- Validation metrics inside right panel -->
+            <div>
+                <div style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:5px;">Validation</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <div class="metric-card" style="border-color:#3b82f6;background:#3b82f615;padding:4px 10px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <span class="mc-label" style="color:#3b82f6;margin-bottom:0;">MSE</span>
+                        <span class="mc-value" id="mse-val" style="color:#3b82f6;font-size:13px;">—</span>
+                    </div>
+                    <div class="metric-card" style="border-color:#7c3aed;background:#7c3aed15;padding:4px 10px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <span class="mc-label" style="color:#7c3aed;margin-bottom:0;">RMSE</span>
+                        <span class="mc-value" id="rmse-val" style="color:#7c3aed;font-size:13px;">—</span>
+                    </div>
+                    <div class="metric-card" style="border-color:#0891b2;background:#0891b215;padding:4px 10px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <span class="mc-label" style="color:#0891b2;margin-bottom:0;">MAE</span>
+                        <span class="mc-value" id="mae-val" style="color:#0891b2;font-size:13px;">—</span>
+                    </div>
+                    <div class="metric-card" style="border-color:#059669;background:#05966915;padding:4px 10px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                        <span class="mc-label" style="color:#059669;margin-bottom:0;">R²</span>
+                        <span class="mc-value" id="r2-val" style="color:#059669;font-size:13px;">—</span>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -446,52 +409,8 @@ print(f"Predicted Values: {predictions}")</pre>
 
 </div>
 
-<!-- ══ METRICS STRIP ══ -->
-<div class="metrics-strip">
-    <span class="metrics-label">Validation</span>
-    <div class="metric-card" style="border-color:#3b82f6;background:#3b82f615;">
-        <span class="mc-label" style="color:#3b82f6;">MSE</span>
-        <span class="mc-value" id="mse-val" style="color:#3b82f6;">—</span>
-    </div>
-    <div class="metric-card" style="border-color:#7c3aed;background:#7c3aed15;">
-        <span class="mc-label" style="color:#7c3aed;">RMSE</span>
-        <span class="mc-value" id="rmse-val" style="color:#7c3aed;">—</span>
-    </div>
-    <div class="metric-card" style="border-color:#0891b2;background:#0891b215;">
-        <span class="mc-label" style="color:#0891b2;">MAE</span>
-        <span class="mc-value" id="mae-val" style="color:#0891b2;">—</span>
-    </div>
-    <div class="metric-card" style="border-color:#059669;background:#05966915;">
-        <span class="mc-label" style="color:#059669;">R² Score</span>
-        <span class="mc-value" id="r2-val" style="color:#059669;">—</span>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="linreg_script.js"></script>
-
-<!-- Compute and render metrics after training -->
-<script>
-document.getElementById('startBtn').addEventListener('click', () => {
-    setTimeout(() => {
-        if (!window.X_values || !X_values.length || !window.weight_hist || !weight_hist.length) return;
-        const w = weight_hist[weight_hist.length - 1];
-        const b = bias_hist[bias_hist.length - 1];
-        const n = X_values.length;
-        const preds = X_values.map(x => w * x + b);
-        const yMean = y_values.reduce((a,c)=>a+c,0)/n;
-        const mse  = preds.reduce((s,p,i) => s + (p-y_values[i])**2, 0) / n;
-        const mae  = preds.reduce((s,p,i) => s + Math.abs(p-y_values[i]), 0) / n;
-        const ssTot= y_values.reduce((s,y) => s + (y-yMean)**2, 0);
-        const ssRes= preds.reduce((s,p,i) => s + (y_values[i]-p)**2, 0);
-        const r2   = 1 - ssRes/ssTot;
-        document.getElementById('mse-val').textContent  = mse.toFixed(3);
-        document.getElementById('rmse-val').textContent = Math.sqrt(mse).toFixed(3);
-        document.getElementById('mae-val').textContent  = mae.toFixed(3);
-        document.getElementById('r2-val').textContent   = r2.toFixed(4);
-    }, 200);
-});
-</script>
 </body>
 </html>
