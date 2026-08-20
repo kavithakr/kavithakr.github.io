@@ -1,29 +1,65 @@
-//----------line number generation code
-const codeGrid = document.getElementById('code-grid');
-const codeBlock = document.getElementById('code-block');
+/* ── Python source (rendered as code-table like logistic regression) ── */
+const CODE = `import numpy as np
 
-const rawCode = codeBlock.textContent;
-const allLines = rawCode.split('\n');
+# ── Run ───────────────────────────────────────────────
+weight_hist, bias_hist = train_linear_regression(
+    X_values, y_values,
+    learning_rate=0.01,
+    num_iterations=100000
+)
 
-// Filter out the leading/trailing blank lines caused by <pre> formatting
-// but keep blank lines in the middle of the code
-const firstNonEmpty = allLines.findIndex(l => l.trim() !== '');
-const lastNonEmpty = [...allLines].reverse().findIndex(l => l.trim() !== '');
-const lines = allLines.slice(firstNonEmpty, allLines.length - lastNonEmpty);
+# ── Loss function ─────────────────────────────────────
+def compute_loss(y_true, y_pred):
+    n = len(y_true)
+    return (1 / n) * np.sum((y_pred - y_true) ** 2)
 
-let gridHTML = '';
+# ── Training function ──────────────────────────────────
+def train_linear_regression(X, y, learning_rate, num_iterations):
+    n_samples = X.shape[0]
+    weight = 0
+    bias   = 0
+    weight_hist = []
+    bias_hist   = []
 
-for (let i = 0; i < lines.length; i++) {
-    const safeLine = lines[i]
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+    for iter in range(num_iterations):
 
-    gridHTML += `<span class="line-number" id="gutter-${i}">${i + 1}</span>`;
-    gridHTML += `<span class="code-line" id="line-${i}">${safeLine}</span>`;
-}
+        # Step 1: predict
+        y_predicted = weight * X + bias
 
-codeGrid.innerHTML = gridHTML;
+        # Step 2: compute gradients
+        dw = (2 / n_samples) * np.sum(X * (y_predicted - y))
+        db = (2 / n_samples) * np.sum(y_predicted - y)
+
+        # Step 3: update weight
+        weight -= learning_rate * dw
+
+        # Step 4: update bias
+        bias -= learning_rate * db
+
+        weight_hist.append(weight)
+        bias_hist.append(bias)
+
+        # Step 5: draw regression line
+        draw_line(weight, bias, iter)
+
+    return weight_hist, bias_hist
+
+# ── Evaluate ──────────────────────────────────────────
+final_weight = weight_hist[-1]
+final_bias   = bias_hist[-1]
+predictions  = final_weight * X_values + final_bias
+print(f"Predicted Values: {predictions}")`;
+
+/* render as <table id="code-table"> rows with .ln and .lc cells */
+(function renderCode() {
+    const lines = CODE.split('\n');
+    let html = '';
+    lines.forEach((ln, i) => {
+        const safe = ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || ' ';
+        html += `<tr id="row-${i}"><td class="ln">${i+1}</td><td class="lc">${safe}</td></tr>`;
+    });
+    document.getElementById('code-table').innerHTML = html;
+})();
 
 //-----------------------------------------------------
 
@@ -36,28 +72,17 @@ let plot_iterations = [0, 1, 10000, 25000, 40000, 50000, 60000, 80000, 99999];
  */
 function highlightGroup(lineNums) {
     if (!lineNums || lineNums.length === 0) return;
-
-    // 1. Remove all existing highlights first
-    document.querySelectorAll('.code-line').forEach(el => el.classList.remove('highlighted-line'));
-    document.querySelectorAll('.line-number').forEach(el => el.classList.remove('highlighted-gutter'));
-
-    // 2. Loop through the group and apply highlights
-    lineNums.forEach(lineNum => {
-        const index = lineNum - 1; // Convert to 0-based
-        const targetLine = document.getElementById(`line-${index}`);
-        const targetGutter = document.getElementById(`gutter-${index}`);
-
-        if (targetLine && targetGutter) {
-            targetLine.classList.add('highlighted-line');
-            targetGutter.classList.add('highlighted-gutter');
-        }
+    /* clear all rows */
+    document.querySelectorAll('#code-table tr').forEach(tr => {
+        tr.classList.remove('highlighted-row', 'dimmed-row');
     });
-
-    // 3. Scroll to the FIRST line of the group to keep it in view
-    const firstLine = document.getElementById(`line-${lineNums[0] - 1}`);
-    if (firstLine) {
-        firstLine.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-    }
+    const hlSet = new Set(lineNums.map(n => `row-${n-1}`));
+    document.querySelectorAll('#code-table tr').forEach(tr => {
+        tr.classList.add(hlSet.has(tr.id) ? 'highlighted-row' : 'dimmed-row');
+    });
+    /* scroll into view */
+    const first = document.getElementById(`row-${lineNums[0]-1}`);
+    if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 /**
@@ -127,7 +152,7 @@ function runTraining() {
 
     // Initial state, before any updates (lines 7-11: init)
     trainingSteps.push({
-        highlight: [7, 8, 9, 10, 11],
+        highlight: [3,4,5,6,7,8,16,17,18,19,20,21],
         type: 'info',
         weight: weight,
         bias: bias,
@@ -168,26 +193,26 @@ function runTraining() {
             // One micro-step per line, in source order, for this checkpoint
 
             trainingSteps.push({
-                highlight: [22],
-                type: 'info',
-                weight: oldWeight,
-                bias: oldBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `Loop: starting iteration ${iter} &nbsp; &mdash; &nbsp; weight and bias carried over from previous iteration: weight = ${oldWeight.toFixed(5)}, bias = ${oldBias.toFixed(5)}`
-            });
-
-            trainingSteps.push({
                 highlight: [23],
-                type: 'info',
+                type: 'iteration',
+                iter: iter,
                 weight: oldWeight,
                 bias: oldBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `y_predicted = weight &times; X + bias &nbsp; (using weight = ${oldWeight.toFixed(5)}, bias = ${oldBias.toFixed(5)})`
+                snapshotsUpTo: snapshotCounter
             });
 
             trainingSteps.push({
-                highlight: [25],
-                type: 'info',
+                highlight: [25,26],
+                type: 'predict',
+                weight: oldWeight,
+                bias: oldBias,
+                snapshotsUpTo: snapshotCounter,
+               // label: `y_predicted = weight &times; X + bias &nbsp; (using weight = ${oldWeight.toFixed(5)}, bias = ${oldBias.toFixed(5)})`
+            });
+
+            trainingSteps.push({
+                highlight: [29],
+                type: 'dw',
                 weight: oldWeight,
                 bias: oldBias,
                 snapshotsUpTo: snapshotCounter,
@@ -195,8 +220,8 @@ function runTraining() {
             });
 
             trainingSteps.push({
-                highlight: [26],
-                type: 'info',
+                highlight: [30],
+                type: 'db',
                 weight: oldWeight,
                 bias: oldBias,
                 snapshotsUpTo: snapshotCounter,
@@ -204,7 +229,7 @@ function runTraining() {
             });
 
             trainingSteps.push({
-                highlight: [28],
+                highlight: [32,33],
                 type: 'weight_update',
                 weight: oldWeight,
                 bias: oldBias,
@@ -215,7 +240,7 @@ function runTraining() {
             });
 
             trainingSteps.push({
-                highlight: [29],
+                highlight: [35,36],
                 type: 'bias_update',
                 weight: newWeight,
                 bias: oldBias,
@@ -226,8 +251,8 @@ function runTraining() {
             });
 
             trainingSteps.push({
-                highlight: [30],
-                type: 'info',
+                highlight: [38],
+                type: 'weighthist',
                 weight: newWeight,
                 bias: newBias,
                 snapshotsUpTo: snapshotCounter,
@@ -235,63 +260,35 @@ function runTraining() {
             });
 
             trainingSteps.push({
-                highlight: [31],
-                type: 'info',
+                highlight: [39],
+                type: 'biashist',
                 weight: newWeight,
                 bias: newBias,
                 snapshotsUpTo: snapshotCounter,
                 label: `bias_hist.append(bias) &nbsp; &rarr; &nbsp; ${newBias.toFixed(5)} added (history now has ${bias_hist.length + 1} entries; previous entry was ${bias_hist.length > 0 ? bias_hist[bias_hist.length - 1].toFixed(5) : 'none, this is the first'})`
             });
 
-            trainingSteps.push({
-                highlight: [35],
-                type: 'info',
-                weight: newWeight,
-                bias: newBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `if iter in plot_iterations: &nbsp; &rarr; &nbsp; True (iter = ${iter})`
-            });
-
-            trainingSteps.push({
-                highlight: [36],
-                type: 'info',
-                weight: newWeight,
-                bias: newBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `current_weight = weight &nbsp; &rarr; &nbsp; ${newWeight.toFixed(5)}`
-            });
-
-            trainingSteps.push({
-                highlight: [37],
-                type: 'info',
-                weight: newWeight,
-                bias: newBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `current_bias = bias &nbsp; &rarr; &nbsp; ${newBias.toFixed(5)}`
-            });
-
-            trainingSteps.push({
-                highlight: [38],
-                type: 'info',
-                weight: newWeight,
-                bias: newBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `current_line = current_weight &times; x_plot + current_bias`
-            });
-
-            // This is the plotting line — a new snapshot line is added to the
-            // graph here, so this step (and everything after it, until the
-            // next checkpoint's line 39) shows one more cumulative line.
-            checkpointSnapshots.push({ iter: iter, weight: newWeight, bias: newBias });
+            /* push the snapshot BEFORE the draw step so the canvas
+               shows the new regression line when draw step is displayed */
+            checkpointSnapshots.push({ iter, weight: newWeight, bias: newBias });
             snapshotCounter++;
 
             trainingSteps.push({
-                highlight: [39],
-                type: 'info',
+                highlight: [41, 42],
+                type: 'draw',
+                iter: iter,
                 weight: newWeight,
                 bias: newBias,
-                snapshotsUpTo: snapshotCounter,
-                label: `plt.plot(x_plot, current_line, label='Iteration ${iter}') &nbsp; &rarr; &nbsp; snapshot recorded`
+                snapshotsUpTo: snapshotCounter   /* now includes this line */
+            });
+
+            trainingSteps.push({
+                highlight: [23],
+                type: 'iter',
+                iter: iter,
+                weight: newWeight,
+                bias: newBias,
+                snapshotsUpTo: snapshotCounter
             });
         }
 
@@ -459,26 +456,253 @@ function drawRegressionPlot(snapshots) {
  */
 function renderStep(step) {
     highlightGroup(step.highlight);
+    const fmt = (v, d=5) => Number(v).toFixed(d);
+    const n   = X_values.length;
+    const calc = document.getElementById('step');
 
-    if (step.type === 'weight_update') {
-        document.getElementById('step').innerHTML = `
-            <span class="calc-title">Weight Update</span>
-            <span class="calc-body">weight = weight − lr × dw
-weight = ${step.weight.toFixed(5)} − ${step.learningRate} × ${step.dw.toFixed(5)}
-       = ${step.newWeight.toFixed(5)}</span>
-        `;
-        updateDisplays(step.newWeight.toFixed(5), step.bias.toFixed(5));
+    if (step.type === 'info') {
+        /* ── Initialisation ─────────────────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">Initialise — Train Linear Regression</span>` +
+            `<span class="calc-body">` +
+            `n_samples = ${n}
+` +
+            `weight    = 0
+` +
+            `bias      = 0
+` +
+            `weight_hist = []
+` +
+            `bias_hist   = []
+
+` +
+            `Training will run for ${document.getElementById('iterationsInput').value || 100000} iterations
+` +
+            `Learning rate α = ${document.getElementById('learningRateInput').value || 0.01}` +
+            `</span>`;
+        updateDisplays('0.00000', '0.00000');
+
+    } else if (step.type === 'iteration') {
+        /* ── Loop header ────────────────────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">for iter in range(num_iterations)</span>` +
+            `<span class="calc-body">` +
+            `Current iteration : ${step.iter ?? '—'}
+
+` +
+            `Carrying over from previous iteration:
+` +
+            `  weight = ${fmt(step.weight)}
+` +
+            `  bias   = ${fmt(step.bias)}` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'predict') {
+        /* ── y_predicted = weight × X + bias ────────────────────── */
+        const yPreds = X_values.map(x => step.weight * x + step.bias);
+        const preview = X_values.slice(0, 3).map((x, i) =>
+            `  x=${fmt(x,2)}: ${fmt(step.weight)} × ${fmt(x,2)} + (${fmt(step.bias)}) = ${fmt(yPreds[i])}`
+        ).join('\n');
+        calc.innerHTML =
+            `<span class="calc-title">Step 1 — Predict: y_predicted = weight × X + bias</span>` +
+            `<span class="calc-body">` +
+            `weight = ${fmt(step.weight)},  bias = ${fmt(step.bias)}
+
+` +
+            `First ${Math.min(3, n)} predictions:
+${preview}` +
+            (n > 3 ? `
+  … (${n - 3} more)` : '') +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'dw') {
+        /* ── dw = (2/n) Σ X×(ŷ−y) ───────────────────────────────── */
+        const yPreds = X_values.map(x => step.weight * x + step.bias);
+        const terms  = X_values.slice(0, 3).map((x, i) =>
+            `  x=${fmt(x,2)}: ${fmt(x,2)} × (${fmt(yPreds[i])} − ${fmt(y_values[i],2)}) = ${fmt(x*(yPreds[i]-y_values[i]))}`
+        ).join('\n');
+        const dwSum  = X_values.reduce((s,x,i) => s + x*(yPreds[i]-y_values[i]), 0);
+        calc.innerHTML =
+            `<span class="calc-title">Step 2a — Gradient dw</span>` +
+            `<span class="calc-body">` +
+            `dw = (2 / n) × Σ X × (y_predicted − y)
+
+` +
+            `First ${Math.min(3,n)} terms:
+${terms}` +
+            (n > 3 ? `
+  … (${n-3} more)` : '') +
+            `
+
+Σ = ${fmt(dwSum)}
+` +
+            `dw = (2 / ${n}) × ${fmt(dwSum)}
+` +
+            `   = ${fmt(step.dw)}` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'db') {
+        /* ── db = (2/n) Σ (ŷ−y) ──────────────────────────────────── */
+        const yPreds = X_values.map(x => step.weight * x + step.bias);
+        const terms  = X_values.slice(0, 3).map((x, i) =>
+            `  [${i}]: ${fmt(yPreds[i])} − ${fmt(y_values[i],2)} = ${fmt(yPreds[i]-y_values[i])}`
+        ).join('\n');
+        const dbSum  = X_values.reduce((s,x,i) => s + (yPreds[i]-y_values[i]), 0);
+        calc.innerHTML =
+            `<span class="calc-title">Step 2b — Gradient db</span>` +
+            `<span class="calc-body">` +
+            `db = (2 / n) × Σ (y_predicted − y)
+
+` +
+            `First ${Math.min(3,n)} terms:
+${terms}` +
+            (n > 3 ? `
+  … (${n-3} more)` : '') +
+            `
+
+Σ = ${fmt(dbSum)}
+` +
+            `db = (2 / ${n}) × ${fmt(dbSum)}
+` +
+            `   = ${fmt(step.db)}` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'weight_update') {
+        /* ── weight = weight − α × dw ────────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">Step 3 — Update Weight</span>` +
+            `<span class="calc-body">` +
+            `weight = weight − α × dw
+
+` +
+            `       = ${fmt(step.weight)}
+` +
+            `       − ${step.learningRate} × (${fmt(step.dw)})
+
+` +
+            `       = ${fmt(step.weight)} − ${fmt(step.learningRate * step.dw)}
+
+` +
+            `weight = ${fmt(step.newWeight)}` +
+            `</span>`;
+        updateDisplays(fmt(step.newWeight), fmt(step.bias));
+
     } else if (step.type === 'bias_update') {
-        document.getElementById('step').innerHTML = `
-            <span class="calc-title">Bias Update</span>
-            <span class="calc-body">bias = bias − lr × db
-bias = ${step.bias.toFixed(5)} − ${step.learningRate} × ${step.db.toFixed(5)}
-     = ${step.newBias.toFixed(5)}</span>
-        `;
-        updateDisplays(step.weight.toFixed(5), step.newBias.toFixed(5));
+        /* ── bias = bias − α × db ────────────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">Step 4 — Update Bias</span>` +
+            `<span class="calc-body">` +
+            `bias = bias − α × db
+
+` +
+            `     = ${fmt(step.bias)}
+` +
+            `     − ${step.learningRate} × (${fmt(step.db)})
+
+` +
+            `     = ${fmt(step.bias)} − ${fmt(step.learningRate * step.db)}
+
+` +
+            `bias = ${fmt(step.newBias)}` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.newBias));
+
+    } else if (step.type === 'weighthist') {
+        /* ── weight_hist.append(weight) ──────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">Append weight to weight_hist</span>` +
+            `<span class="calc-body">` +
+            `weight_hist.append(weight)
+
+` +
+            `Appended value : ${fmt(step.weight)}
+` +
+            `History length : ${step.histLen ?? weight_hist.length + 1} entries
+` +
+            `Previous entry : ${weight_hist.length > 0 ? fmt(weight_hist[weight_hist.length-1]) : 'none (first entry)'}` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'biashist') {
+        /* ── bias_hist.append(bias) ──────────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">Append bias to bias_hist</span>` +
+            `<span class="calc-body">` +
+            `bias_hist.append(bias)
+
+` +
+            `Appended value : ${fmt(step.bias)}
+` +
+            `History length : ${step.histLen ?? bias_hist.length + 1} entries
+` +
+            `Previous entry : ${bias_hist.length > 0 ? fmt(bias_hist[bias_hist.length-1]) : 'none (first entry)'}` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'draw') {
+        /* ── draw_line(weight, bias, iter) ───────────────────────── */
+        const x0 = Math.min(...X_values) - 1;
+        const x1 = Math.max(...X_values) + 1;
+        calc.innerHTML =
+            `<span class="calc-title">Step 5 — draw_line(weight, bias, iter)</span>` +
+            `<span class="calc-body">` +
+            `Regression line equation:
+` +
+            `  y = ${fmt(step.weight)} × x + (${fmt(step.bias)})
+
+` +
+            `Plot range:
+` +
+            `  x from ${fmt(x0,2)} to ${fmt(x1,2)}
+
+` +
+            `  y at x=${fmt(x0,2)} : ${fmt(step.weight*x0+step.bias)}
+` +
+            `  y at x=${fmt(x1,2)} : ${fmt(step.weight*x1+step.bias)}
+
+` +
+            `← Canvas redrawn with updated line` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
+    } else if (step.type === 'iter') {
+        /* ── End of iteration summary ────────────────────────────── */
+        calc.innerHTML =
+            `<span class="calc-title">End of Iteration</span>` +
+            `<span class="calc-body">` +
+            `Iteration complete.
+
+` +
+            `Updated parameters:
+` +
+            `  weight = ${fmt(step.weight)}
+` +
+            `  bias   = ${fmt(step.bias)}
+
+` +
+            `These values carry into the next iteration.` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
+
     } else {
-        document.getElementById('step').innerHTML = `<span class="calc-body">${step.label}</span>`;
-        updateDisplays(step.weight.toFixed(5), step.bias.toFixed(5));
+        /* ── fallback for any remaining label-based steps ─────────── */
+        calc.innerHTML =
+            `<span class="calc-title">Training Complete</span>` +
+            `<span class="calc-body">` +
+            `Final weight = ${fmt(step.weight)}
+` +
+            `Final bias   = ${fmt(step.bias)}
+
+` +
+            `The model is ready to make predictions.
+` +
+            `  y = ${fmt(step.weight)} × x + (${fmt(step.bias)})` +
+            `</span>`;
+        updateDisplays(fmt(step.weight), fmt(step.bias));
     }
 
     drawRegressionPlot(checkpointSnapshots.slice(0, step.snapshotsUpTo));
@@ -488,6 +712,24 @@ document.getElementById('startBtn').addEventListener('click', () => {
     const ok = runTraining();
     if (ok) {
         renderStep(trainingSteps[currentStepIndex]);
+        /* compute and render validation metrics */
+        setTimeout(() => {
+            if (!X_values.length || !weight_hist.length) return;
+            const w    = weight_hist[weight_hist.length - 1];
+            const b    = bias_hist[bias_hist.length - 1];
+            const n    = X_values.length;
+            const preds = X_values.map(x => w * x + b);
+            const yMean = y_values.reduce((a,c) => a+c, 0) / n;
+            const mse   = preds.reduce((s,p,i) => s + (p-y_values[i])**2, 0) / n;
+            const mae   = preds.reduce((s,p,i) => s + Math.abs(p-y_values[i]), 0) / n;
+            const ssTot = y_values.reduce((s,y) => s + (y-yMean)**2, 0);
+            const ssRes = preds.reduce((s,p,i) => s + (y_values[i]-p)**2, 0);
+            const r2    = 1 - ssRes/ssTot;
+            document.getElementById('mse-val').textContent  = mse.toFixed(3);
+            document.getElementById('rmse-val').textContent = Math.sqrt(mse).toFixed(3);
+            document.getElementById('mae-val').textContent  = mae.toFixed(3);
+            document.getElementById('r2-val').textContent   = r2.toFixed(4);
+        }, 300);
     }
 });
 
@@ -629,4 +871,42 @@ document.getElementById('submitFileBtn').addEventListener('click', () => {
         renderDataPreview();
     };
     reader.readAsArrayBuffer(file);
+});
+
+/* ── Keyboard navigation with button flash ── */
+function flashBtn(id) {
+    ['startBtn','prevBtn','nextBtn','endBtn'].forEach(bid => {
+        const b = document.getElementById(bid);
+        if (b) b.classList.remove('nav-btn-flash');
+    });
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    void btn.offsetWidth;
+    btn.classList.add('nav-btn-flash');
+    btn.addEventListener('animationend', () => btn.classList.remove('nav-btn-flash'), { once: true });
+}
+
+document.addEventListener('keydown', e => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight') {
+        e.preventDefault(); flashBtn('nextBtn');
+        if (trainingSteps.length && currentStepIndex < trainingSteps.length - 1) {
+            currentStepIndex++; renderStep(trainingSteps[currentStepIndex]);
+        }
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault(); flashBtn('prevBtn');
+        if (trainingSteps.length && currentStepIndex > 0) {
+            currentStepIndex--; renderStep(trainingSteps[currentStepIndex]);
+        }
+    } else if (e.key === 'Home') {
+        e.preventDefault(); flashBtn('startBtn');
+        if (trainingSteps.length) { currentStepIndex = 0; renderStep(trainingSteps[0]); }
+    } else if (e.key === 'End') {
+        e.preventDefault(); flashBtn('endBtn');
+        if (trainingSteps.length) {
+            currentStepIndex = trainingSteps.length - 1;
+            renderStep(trainingSteps[currentStepIndex]);
+        }
+    }
 });
