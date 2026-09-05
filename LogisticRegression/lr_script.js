@@ -13,11 +13,11 @@ def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 # ── 2. Binary cross-entropy loss ─────────────────
-def compute_loss(y_true, y_hat):
+def compute_loss(y_true, ŷ):
     eps = 1e-9
     return -np.mean(
-        y_true * np.log(y_hat + eps) +
-        (1 - y_true) * np.log(1 - y_hat + eps)
+        y_true * np.log(ŷ + eps) +
+        (1 - y_true) * np.log(1 - ŷ + eps)
     )
 
 # ── 3. Training loop ─────────────────────────────
@@ -29,14 +29,14 @@ def train(X, y, lr, iterations):
         z = X * w + b
 
         # ── 5. Apply sigmoid → probabilities ──────
-        y_hat = sigmoid(z)          # y_hat = ŷ ∈ (0, 1)
+        ŷ = sigmoid(z)          # ŷ ∈ (0, 1)
 
         # ── 6. Compute loss ───────────────────────
-        loss = compute_loss(y, y_hat)
+        loss = compute_loss(y, ŷ)
 
         # ── 7. Gradients ──────────────────────────
-        dw = np.mean((y_hat - y) * X)
-        db = np.mean(y_hat - y)
+        dw = np.mean((ŷ - y) * X)
+        db = np.mean(ŷ - y)
 
         # ── 8. Update parameters ──────────────────
         w = w - lr * dw
@@ -572,26 +572,45 @@ function renderMetrics(w, b) {
     const tn = preds.filter((p,i) => p===0 && y_test[i]===0).length;
     const fp = preds.filter((p,i) => p===1 && y_test[i]===0).length;
     const fn = preds.filter((p,i) => p===0 && y_test[i]===1).length;
-    const acc  = (tp+tn)/(tp+tn+fp+fn) || 0;
-    const prec = tp/(tp+fp) || 0;
-    const rec  = tp/(tp+fn) || 0;
-    const spec = tn/(tn+fp) || 0;
-    const f1   = 2*prec*rec/(prec+rec) || 0;
 
-    const card = (l,v,c) =>
+    /* ── Safe division — returns null when denominator is zero ───── */
+    const safeDivide = (num, den) => den === 0 ? null : num / den;
+
+    const acc  = safeDivide(tp + tn, tp + tn + fp + fn);
+    const prec = safeDivide(tp, tp + fp);   /* null when no positive predictions  */
+    const rec  = safeDivide(tp, tp + fn);   /* null when no actual positives       */
+    const spec = safeDivide(tn, tn + fp);   /* null when no actual negatives       */
+    const f1   = (prec !== null && rec !== null && (prec + rec) > 0)
+                    ? 2 * prec * rec / (prec + rec)
+                    : null;
+
+    /* ── Render helpers ───────────────────────────────────────────── */
+    /* fmt: show percentage or "N/A" with tooltip explaining why      */
+    const fmt = (v, reason) => v !== null
+        ? `${(v * 100).toFixed(2)}%`
+        : `<span title="${reason}" style="cursor:help;letter-spacing:.02em;">N/A</span>`;
+
+    const card = (l, v, c, reason='') =>
         `<div class="metric-card" style="border-color:${c};background:${c}15;">
            <span class="mc-label" style="color:${c};">${l}</span>
-           <span class="mc-value" style="color:${c};">${(v*100).toFixed(2)}%</span>
+           <span class="mc-value" style="color:${c};font-size:${v !== null ? '15' : '12'}px;">${fmt(v, reason)}</span>
          </div>`;
+
+    /* ── Tooltip reasons for each undefined case ─────────────────── */
+    const precReason  = 'Precision is undefined: no samples were predicted positive (TP+FP=0)';
+    const recReason   = 'Recall is undefined: no actual positive samples in test set (TP+FN=0)';
+    const specReason  = 'Specificity is undefined: no actual negative samples in test set (TN+FP=0)';
+    const f1Reason    = 'F1 is undefined: requires valid Precision and Recall';
+
     document.getElementById('metrics').innerHTML =
         card('Accuracy',    acc,  '#3b82f6') +
-        card('Precision',   prec, '#7c3aed') +
-        card('Recall',      rec,  '#0891b2') +
-        card('Specificity', spec, '#d97706') +
-        card('F1 Score',    f1,   '#059669') +
-        `<div class="border rounded px-3 py-1 text-center" style="border-color:#64748b!important;background:#64748b18;">
-           <div style="font-size:.6rem;font-weight:700;color:#64748b;">TP/TN/FP/FN</div>
-           <div style="font-size:.8rem;font-weight:700;">${tp}/${tn}/${fp}/${fn}</div>
+        card('Precision',   prec, '#7c3aed', precReason) +
+        card('Recall',      rec,  '#0891b2', recReason) +
+        card('Specificity', spec, '#d97706', specReason) +
+        card('F1 Score',    f1,   '#059669', f1Reason) +
+        `<div class="metric-card" style="border-color:#64748b;background:#64748b15;">
+           <span class="mc-label" style="color:#64748b;">TP / TN / FP / FN</span>
+           <span class="mc-value" style="color:#64748b;font-size:12px;">${tp} / ${tn} / ${fp} / ${fn}</span>
          </div>`;
 }
 
