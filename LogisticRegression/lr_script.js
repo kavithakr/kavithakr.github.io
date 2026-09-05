@@ -13,11 +13,11 @@ def sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 # ── 2. Binary cross-entropy loss ─────────────────
-def compute_loss(y_true, y_pred):
+def compute_loss(y_true, y_hat):
     eps = 1e-9
     return -np.mean(
-        y_true * np.log(y_pred + eps) +
-        (1 - y_true) * np.log(1 - y_pred + eps)
+        y_true * np.log(y_hat + eps) +
+        (1 - y_true) * np.log(1 - y_hat + eps)
     )
 
 # ── 3. Training loop ─────────────────────────────
@@ -29,14 +29,14 @@ def train(X, y, lr, iterations):
         z = X * w + b
 
         # ── 5. Apply sigmoid → probabilities ──────
-        y_pred = sigmoid(z)
+        y_hat = sigmoid(z)          # y_hat = ŷ ∈ (0, 1)
 
         # ── 6. Compute loss ───────────────────────
-        loss = compute_loss(y, y_pred)
+        loss = compute_loss(y, y_hat)
 
         # ── 7. Gradients ──────────────────────────
-        dw = np.mean((y_pred - y) * X)
-        db = np.mean(y_pred - y)
+        dw = np.mean((y_hat - y) * X)
+        db = np.mean(y_hat - y)
 
         # ── 8. Update parameters ──────────────────
         w = w - lr * dw
@@ -73,9 +73,9 @@ const LINE = {
     call:      [3],                          // w, b = train(X_train, y_train, lr, iterations)
     train_fn:  [18, 19],                // def train + w,b=0 + for loop
     linear:    [22, 23],                    // z = X * w + b
-    apply_sig: [25,26],                    // y_pred = sigmoid(z)
+    apply_sig: [25,26],                    // ŷ = sigmoid(z)
     sigmoid:   [5, 6, 7],                   // def sigmoid(z) body
-    loss:      [28,29],                    // loss = compute_loss(y, y_pred)
+    loss:      [28,29],                    // loss = compute_loss(y, ŷ)
     loss_fn:   [9, 10, 11, 12, 13, 14, 15],// def compute_loss body
     gradients: [31,32,33],               // dw, db
     update:    [35,36,37],               // w = w - lr*dw  b = b - lr*db
@@ -193,13 +193,15 @@ function buildSteps(snaps) {
 
     /* helper — ALL samples, no truncation */
     const allZ  = s => X_train.map((x,i) => `  z[${i}]      = ${fmt(x,2)} × (${fmt(s.w,6)}) + (${fmt(s.b,6)}) = ${fmt(s.z[i],6)}`).join('\n');
-    const allYP = s => X_train.map((x,i) =>
-        `  ŷ[${i}]      = 1/(1+e^(${fmt(-s.z[i],4)})) = ${fmt(s.yp[i],6)}   y=${y_train[i]}`
-    ).join('\n');
+    const allYP = s => X_train.map((x,i) => {
+        const sign = s.z[i] >= 0 ? '+' : '';
+        return `  ŷ[${i}] = σ(${sign}${fmt(s.z[i],6)}) = 1/(1+e^(${fmt(-s.z[i],4)})) = ${fmt(s.yp[i],6)}   [y=${y_train[i]}]`;
+    }).join('\n');
     const allLoss = s => X_train.map((x,i) => {
         const eps=1e-9;
-        const term = y_train[i]*Math.log(s.yp[i]+eps) + (1-y_train[i])*Math.log(1-s.yp[i]+eps);
-        return `  [${i}]  y=${y_train[i]}  ŷ=${fmt(s.yp[i],6)}  → ${fmt(term,6)}`;
+        const yp = s.yp[i];   // sigmoid output — always in (0,1)
+        const term = y_train[i]*Math.log(yp+eps) + (1-y_train[i])*Math.log(1-yp+eps);
+        return `  [${i}]  y=${y_train[i]}  ŷ=${fmt(yp,6)}  term=${fmt(term,6)}`;
     }).join('\n');
     const allDW  = s => X_train.map((x,i) =>
         `  [${i}]  (${fmt(s.yp[i],6)} - ${y_train[i]}) × ${fmt(x,4)} = ${fmt((s.yp[i]-y_train[i])*x,6)}`
@@ -271,15 +273,17 @@ function buildSteps(snaps) {
                 allZ(s)
         });
 
-        /* Step 5a — call site: y_pred = sigmoid(z) */
+        /* Step 5a — call site: ŷ = sigmoid(z) */
         STEPS.push({
             lines: LINE.apply_sig, kind: 'apply_sig_call',
-            title: `Step 5 — y_pred = sigmoid(z)  [${iterLabel}]`,
+            title: `Step 5 — ŷ = sigmoid(z)  [${iterLabel}]`,
             w: s.w, b: s.b, curves: [...curvesAccum],
             detail:
-                `y_pred = sigmoid(z)\n\n` +
+                `ŷ = sigmoid(z)    # ŷ ∈ (0, 1)\n\n` +
                 (showFull ? `→ calling def sigmoid(z) on line 6…\n\n` : '') +
-                `sigmoid(z) = 1 / (1 + e^(−z))\n\n` +
+                `sigmoid(z) = 1 / (1 + e^(−z))\n` +
+                `Note: z = wx+b can be any real number (±)\n` +
+                `      ŷ = sigmoid(z) is always in [0, 1]\n\n` +
                 allYP(s)
         });
 
@@ -298,16 +302,18 @@ function buildSteps(snaps) {
             });
         }
 
-        /* Step 6a — call site: loss = compute_loss(y, y_pred) */
+        /* Step 6a — call site: loss = compute_loss(y, ŷ) */
         const prevLoss = si > 0 ? snaps[si-1].loss : null;
         STEPS.push({
             lines: LINE.loss, kind: 'loss_call',
-            title: `Step 6 — loss = compute_loss(y, y_pred)  [${iterLabel}]`,
+            title: `Step 6 — loss = compute_loss(y, ŷ)  [${iterLabel}]`,
             w: s.w, b: s.b, curves: [...curvesAccum],
             detail:
-                `loss = compute_loss(y, y_pred)\n\n` +
+                `loss = compute_loss(y, ŷ)\n\n` +
                 (showFull ? `→ calling def compute_loss() on line 10…\n\n` : '') +
-                `L = −mean( y·log(ŷ) + (1−y)·log(1−ŷ) )\n\n` +
+                `L(y, ŷ) = −mean( y·log(ŷ) + (1−y)·log(1−ŷ) )\n` +
+                `where  y  = true label ∈ {0,1}\n` +
+                `       ŷ  = sigmoid(z) ∈ (0,1)  ← predicted probability\n\n` +
                 allLoss(s) +
                 `\n\nLoss = ${fmt(s.loss, 8)}` +
                 (prevLoss !== null
@@ -319,15 +325,17 @@ function buildSteps(snaps) {
         if (showFull) {
             STEPS.push({
                 lines: LINE.loss_fn, kind: 'loss_fn',
-                title: `def compute_loss(y_true, y_pred)  [${iterLabel}]`,
+                title: `def compute_loss(y_true, ŷ)  [${iterLabel}]`,
                 w: s.w, b: s.b, curves: [...curvesAccum],
                 detail:
-                    `def compute_loss(y_true, y_pred):\n` +
-                    `    eps = 1e-9\n` +
+                    `def compute_loss(y_true, ŷ):\n` +
+                    `    eps = 1e-9      # small constant to avoid log(0)\n` +
                     `    return -np.mean(\n` +
-                    `        y_true * np.log(y_pred + eps) +\n` +
-                    `        (1-y_true) * np.log(1-y_pred + eps))\n\n` +
-                    `Per-sample terms:\n` +
+                    `        y_true * np.log(ŷ + eps) +\n` +
+                    `        (1 - y_true) * np.log(1 - ŷ + eps))\n\n` +
+                    `Note: ŷ = sigmoid(z) ∈ (0,1) — never negative\n` +
+                    `      y_true ∈ {0,1} — binary class labels\n\n` +
+                    `Per-sample cross-entropy terms:\n` +
                     allLoss(s) +
                     `\n\nLoss = ${fmt(s.loss, 8)}\n← returns to line 29`
             });
