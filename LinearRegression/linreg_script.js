@@ -327,8 +327,19 @@ function drawRegressionPlot(snapshots) {
     const canvas = document.getElementById('regressionCanvas');
     if (!canvas || !canvas.getContext) return;
     const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+
+    /* ── High-DPI / retina fix ─────────────────────────────────── */
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth  || canvas.offsetWidth  || 380;
+    const cssH = canvas.clientHeight || canvas.offsetHeight || 370;
+    if (canvas.width !== Math.round(cssW * dpr) ||
+        canvas.height !== Math.round(cssH * dpr)) {
+        canvas.width  = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        ctx.scale(dpr, dpr);
+    }
+    const width  = cssW;   /* logical CSS pixels — use these for all drawing */
+    const height = cssH;
     ctx.clearRect(0, 0, width, height);
 
     if (!X_values.length) return;
@@ -361,7 +372,7 @@ function drawRegressionPlot(snapshots) {
     // Major gridlines + tick labels (matches plt.grid(True) in the Python source)
     const NUM_TICKS = 5; // number of major gridlines per axis
 
-    ctx.font = '9px sans-serif';
+    ctx.font = '11px sans-serif';
     ctx.strokeStyle = '#dddddd';
     ctx.lineWidth = 1;
 
@@ -398,7 +409,7 @@ function drawRegressionPlot(snapshots) {
 
     // Axes (drawn on top of the gridlines for a crisp border)
     ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(marginL, marginT);
     ctx.lineTo(marginL, marginT + plotH);
@@ -421,7 +432,7 @@ function drawRegressionPlot(snapshots) {
     // Cumulative regression lines, one per checkpoint reached so far
     snapshots.forEach((s, idx) => {
         ctx.strokeStyle = PLOT_COLORS[idx % PLOT_COLORS.length];
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(toPx(xMin), toPy(s.weight * xMin + s.bias));
         ctx.lineTo(toPx(xMax), toPy(s.weight * xMax + s.bias));
@@ -438,7 +449,7 @@ function drawRegressionPlot(snapshots) {
 
     // Legend listing each plotted iteration and its color
     ctx.textAlign = 'left';
-    ctx.font = '9px sans-serif';
+    ctx.font = '11px sans-serif';
     let legendY = marginT + 4;
     snapshots.forEach((s, idx) => {
         ctx.fillStyle = PLOT_COLORS[idx % PLOT_COLORS.length];
@@ -501,8 +512,8 @@ function renderStep(step) {
     } else if (step.type === 'predict') {
         /* ── y_predicted = weight × X + bias ────────────────────── */
         const yPreds = X_values.map(x => step.weight * x + step.bias);
-        const preview = X_values.slice(0, 3).map((x, i) =>
-            `  x=${fmt(x,2)}: ${fmt(step.weight)} × ${fmt(x,2)} + (${fmt(step.bias)}) = ${fmt(yPreds[i])}`
+        const preview = X_values.map((x, i) =>
+            `  [${i}] x=${fmt(x,2)}: ${fmt(step.weight)} × ${fmt(x,2)} + (${fmt(step.bias)}) = ${fmt(yPreds[i])}`
         ).join('\n');
         calc.innerHTML =
             `<span class="calc-title">Step 1 — Predict: y_predicted = weight × X + bias</span>` +
@@ -510,17 +521,15 @@ function renderStep(step) {
             `weight = ${fmt(step.weight)},  bias = ${fmt(step.bias)}
 
 ` +
-            `First ${Math.min(3, n)} predictions:
+            `All ${n} predictions:
 ${preview}` +
-            (n > 3 ? `
-  … (${n - 3} more)` : '') +
             `</span>`;
         updateDisplays(fmt(step.weight), fmt(step.bias));
 
     } else if (step.type === 'dw') {
         /* ── dw = (2/n) Σ X×(ŷ−y) ───────────────────────────────── */
         const yPreds = X_values.map(x => step.weight * x + step.bias);
-        const terms  = X_values.slice(0, 3).map((x, i) =>
+        const terms  = X_values.map((x, i) =>
             `  x=${fmt(x,2)}: ${fmt(x,2)} × (${fmt(yPreds[i])} − ${fmt(y_values[i],2)}) = ${fmt(x*(yPreds[i]-y_values[i]))}`
         ).join('\n');
         const dwSum  = X_values.reduce((s,x,i) => s + x*(yPreds[i]-y_values[i]), 0);
@@ -530,10 +539,8 @@ ${preview}` +
             `dw = (2 / n) × Σ X × (y_predicted − y)
 
 ` +
-            `First ${Math.min(3,n)} terms:
+            `All ${n} terms:
 ${terms}` +
-            (n > 3 ? `
-  … (${n-3} more)` : '') +
             `
 
 Σ = ${fmt(dwSum)}
@@ -547,7 +554,7 @@ ${terms}` +
     } else if (step.type === 'db') {
         /* ── db = (2/n) Σ (ŷ−y) ──────────────────────────────────── */
         const yPreds = X_values.map(x => step.weight * x + step.bias);
-        const terms  = X_values.slice(0, 3).map((x, i) =>
+        const terms  = X_values.map((x, i) =>
             `  [${i}]: ${fmt(yPreds[i])} − ${fmt(y_values[i],2)} = ${fmt(yPreds[i]-y_values[i])}`
         ).join('\n');
         const dbSum  = X_values.reduce((s,x,i) => s + (yPreds[i]-y_values[i]), 0);
@@ -557,10 +564,8 @@ ${terms}` +
             `db = (2 / n) × Σ (y_predicted − y)
 
 ` +
-            `First ${Math.min(3,n)} terms:
+            `All ${n} terms:
 ${terms}` +
-            (n > 3 ? `
-  … (${n-3} more)` : '') +
             `
 
 Σ = ${fmt(dbSum)}
