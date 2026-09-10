@@ -474,53 +474,83 @@ function drawCanvas(step) {
 /* ── WCSS chart ── */
 function drawWCSSChart(step) {
     const canvas = document.getElementById('wcss-canvas');
-    const W = canvas.offsetWidth || 200;
-    const H = canvas.offsetHeight || 100;
-    canvas.width=W; canvas.height=H;
-    const ctx=canvas.getContext('2d');
-    ctx.clearRect(0,0,W,H);
+    const W = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 280;
+    const H = 120;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
 
-    const hist = (step && step.wcssHistory) ? step.wcssHistory : [];
-    if (hist.length < 2) {
-        ctx.fillStyle='#94a3b8'; ctx.font='9px sans-serif';
-        ctx.fillText('WCSS chart appears after 1st iteration',8,H/2);
+    /* use cached history so chart persists across all steps */
+    const raw = (step && step.wcssHistory && step.wcssHistory.length > 0)
+                    ? step.wcssHistory
+                    : (typeof _wcssCache !== 'undefined' ? _wcssCache : []);
+    const hist = raw;
+
+    if (hist.length === 0) {
+        ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif';
+        ctx.fillText('WCSS chart appears after 1st iteration', 8, H / 2);
         return;
     }
-    const pad=28, maxV=Math.max(...hist), minV=Math.min(...hist)*0.95;
-    const px2=i => pad+(i/(hist.length-1))*(W-pad-8);
-    const py2=v => H-pad-(v-minV)/(maxV-minV+1e-9)*(H-2*pad);
 
-    /* axes */
-    ctx.strokeStyle='#94a3b8'; ctx.lineWidth=0.8;
-    ctx.beginPath(); ctx.moveTo(pad,4); ctx.lineTo(pad,H-pad); ctx.lineTo(W-4,H-pad); ctx.stroke();
-    ctx.fillStyle='#64748b'; ctx.font='7px sans-serif';
-    ctx.fillText('Iter',W-18,H-pad+8); ctx.fillText('WCSS',2,10);
+    const pad = 28;
+    /* draw axes */
+    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(pad, 4); ctx.lineTo(pad, H - pad);
+    ctx.lineTo(W - 4, H - pad); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.font = '7px sans-serif';
+    ctx.fillText('Iter', W - 18, H - pad + 8);
+    ctx.fillText('WCSS', 2, 10);
+
+    if (hist.length === 1) {
+        /* single dot */
+        const cx = pad + 8, cy = (H - pad) / 2;
+        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#2563eb'; ctx.fill();
+        ctx.fillStyle = '#64748b'; ctx.font = '7px sans-serif';
+        ctx.fillText(hist[0].toFixed(2), cx + 6, cy + 3);
+        return;
+    }
+
+    const maxV = Math.max(...hist), minV = Math.min(...hist) * 0.95;
+    const px2 = i => pad + (i / (hist.length - 1)) * (W - pad - 8);
+    const py2 = v => H - pad - (v - minV) / (maxV - minV + 1e-9) * (H - 2 * pad);
+
+    /* tick labels */
+    ctx.fillStyle = '#64748b'; ctx.font = '7px sans-serif';
+    hist.forEach((v, i) => {
+        if (i % Math.max(1, Math.floor(hist.length / 5)) === 0 || i === hist.length - 1) {
+            ctx.fillText(i + 1, px2(i) - 3, H - pad + 8);
+        }
+    });
+    ctx.fillText(maxV.toFixed(1), pad + 2, 16);
+    ctx.fillText(minV.toFixed(1), pad + 2, H - pad - 2);
 
     /* line */
-    ctx.beginPath(); ctx.strokeStyle='#2563eb'; ctx.lineWidth=1.5;
-    hist.forEach((v,i)=>{ i===0?ctx.moveTo(px2(i),py2(v)):ctx.lineTo(px2(i),py2(v)); });
+    ctx.beginPath(); ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 1.5;
+    hist.forEach((v, i) => { i === 0 ? ctx.moveTo(px2(i), py2(v)) : ctx.lineTo(px2(i), py2(v)); });
     ctx.stroke();
 
-    /* dots */
-    hist.forEach((v,i)=>{
-        ctx.beginPath(); ctx.arc(px2(i),py2(v),3,0,2*Math.PI);
-        ctx.fillStyle='#2563eb'; ctx.fill();
-        ctx.fillStyle='#64748b'; ctx.font='7px sans-serif';
-        ctx.fillText(i+1,px2(i)-3,H-pad+8);
+    /* dots + value labels */
+    hist.forEach((v, i) => {
+        ctx.beginPath(); ctx.arc(px2(i), py2(v), 3, 0, 2 * Math.PI);
+        ctx.fillStyle = '#2563eb'; ctx.fill();
+        if (i === hist.length - 1 || hist.length <= 6) {
+            ctx.fillStyle = '#64748b'; ctx.font = '7px sans-serif';
+            ctx.fillText(v.toFixed(2), px2(i) + 4, py2(v) - 3);
+        }
     });
 }
 
-/* ── cluster sizes ── */
 function renderClusterSizes(step) {
     const box = document.getElementById('cluster-sizes');
-    if (!step || !step.clusters) { box.innerHTML='<span style="color:#475569;font-size:9px;font-family:var(--mono);">—</span>'; return; }
+    if (!step || !step.clusters) { box.innerHTML='<span class="text-muted">—</span>'; return; }
     const k = step.centroids ? step.centroids.length : 0;
     const sizes = Array.from({length:k},(_,i)=>step.clusters.filter(c=>c===i).length);
     box.innerHTML = sizes.map((n,i)=>
-        `<div style="display:flex;align-items:center;margin-bottom:3px;font-size:10px;font-family:var(--mono);">
-           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;
-                        background:${PALETTE[i%PALETTE.length]};margin-right:5px;flex-shrink:0;"></span>
-           <span>C${i+1}: <b>${n}</b> pts</span>
+        `<div class="d-flex align-items-center mb-1">
+           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+                        background:${PALETTE[i%PALETTE.length]};margin-right:5px;"></span>
+           <span>Cluster ${i+1}: <b>${n}</b> points</span>
          </div>`
     ).join('');
 }
@@ -530,10 +560,9 @@ function renderCentroidInfo(step) {
     const box = document.getElementById('centroid-info');
     if (!step || !step.centroids) { box.innerHTML=''; return; }
     box.innerHTML = step.centroids.map((c,i)=>
-        `<div style="display:flex;align-items:center;margin-bottom:3px;font-size:10px;font-family:var(--mono);">
-           <span style="display:inline-block;width:9px;height:9px;border-radius:50%;
-                        background:${PALETTE[i%PALETTE.length]};margin-right:5px;flex-shrink:0;"></span>
-           <span style="color:var(--ink-2);">C${i+1}: <b style="color:var(--navy);">(${fmt(c[0],2)}, ${fmt(c[1],2)})</b></span>
+        `<div class="d-flex align-items-center mb-1">
+           <span class="centroid-dot" style="background:${PALETTE[i%PALETTE.length]};"></span>
+           <span>C${i+1}: (${fmt(c[0],2)}, ${fmt(c[1],2)})</span>
          </div>`
     ).join('');
 }
@@ -566,9 +595,9 @@ function renderMetrics(step) {
     const sil = silSum/n;
 
     const card=(l,v,c)=>
-        `<div class="metric-card" style="border-color:${c};background:${c}15;">
-           <span class="mc-label" style="color:${c};">${l}</span>
-           <span class="mc-value" style="color:${c};">${v}</span>
+        `<div class="border rounded px-3 py-1 text-center" style="border-color:${c}!important;background:${c}18;">
+           <div style="font-size:.6rem;font-weight:700;color:${c};text-transform:uppercase;">${l}</div>
+           <div style="font-size:.9rem;font-weight:700;">${v}</div>
          </div>`;
     document.getElementById('metrics').innerHTML =
         card('WCSS',         fmt(wcss,2),         '#3b82f6') +
@@ -582,10 +611,14 @@ function renderMetrics(step) {
 /* ══════════════════════════════════════════════════════════════════
    SHOW STEP
    ══════════════════════════════════════════════════════════════════ */
+
+let _wcssCache = [];   /* persists wcssHistory across steps */
 function show(i) {
     if (!STEPS.length) return;
     cursor = Math.max(0, Math.min(i, STEPS.length-1));
     const s = STEPS[cursor];
+    /* update wcss cache whenever this step has fresh history */
+    if (s.wcssHistory && s.wcssHistory.length > 0) _wcssCache = s.wcssHistory;
 
     highlight(s.lines);
     document.getElementById('step-counter').textContent = `Step ${cursor+1} / ${STEPS.length}`;
@@ -649,7 +682,7 @@ document.getElementById('kmeans-canvas').addEventListener('click', function(e) {
     const cy = x2Min + (1-(my-8)/(H-pad-8))*(x2Max-x2Min);
     manualCentroids.push([+cx.toFixed(3), +cy.toFixed(3)]);
     document.getElementById('calc').innerHTML =
-        `<span style="color:#34d399;font-family:var(--mono);font-size:10px;">C${manualCentroids.length}/${k} placed at (${cx.toFixed(2)}, ${cy.toFixed(2)}).` +
+        `<span class="text-success">Centroid ${manualCentroids.length}/${k} placed at (${cx.toFixed(2)}, ${cy.toFixed(2)}).` +
         (manualCentroids.length < k ? ` Click ${k-manualCentroids.length} more.` : ' Press <b>Start</b>.') +
         `</span>`;
     drawCanvas(null);
@@ -672,7 +705,7 @@ function loadData(arr) {
 
     manualCentroids = []; STEPS = []; cursor = -1;
     document.getElementById('calc').innerHTML =
-        `<span style="color:#475569;">${DATA.length} pts loaded. Press <span style="color:#38bdf8;">Start</span>.</span>`;
+        `<span class="text-muted">${DATA.length} points loaded. Press <b>Start</b>.</span>`;
     document.getElementById('step-counter').textContent = 'Step 0 / 0';
     document.getElementById('metrics').innerHTML = '';
     drawCanvas(null); drawWCSSChart(null);
@@ -680,12 +713,12 @@ function loadData(arr) {
 
 /* ── preset ── */
 const PRESET = [
-    /* cluster A — lower left */
-    [1.2,1.5],[1.8,2.2],[0.8,2.8],[2.5,1.2],[1.5,3.0],[3.0,1.8],[0.5,1.5],[2.0,0.8],[2.8,2.5],[1.0,3.5],
-    /* cluster B — upper right */
-    [7.5,8.0],[8.2,7.5],[6.8,8.5],[8.8,8.2],[7.0,7.0],[9.0,7.8],[8.5,9.0],[6.5,7.5],[9.2,8.8],[7.8,9.2],
-    /* cluster C — lower right */
-    [8.0,1.5],[9.0,2.5],[7.5,0.8],[9.5,1.8],[8.5,3.0],[7.0,2.0],[9.8,2.8],[8.2,0.5],[9.2,3.5],[7.8,1.2],
+    /* cluster A — top left (x:0.5–4, y:6–10) */
+    [1.0,9.5],[2.2,8.8],[0.8,7.5],[3.0,9.2],[1.8,6.8],[3.8,8.2],[0.5,8.0],[2.8,7.2],[1.5,9.8],[3.5,6.5],
+    /* cluster B — bottom centre (x:3.5–7, y:0.5–4) */
+    [4.0,1.2],[5.5,0.8],[4.8,3.0],[6.2,1.8],[5.0,2.5],[6.8,3.5],[4.2,0.5],[5.8,2.0],[6.5,0.8],[4.5,3.8],
+    /* cluster C — right side (x:7–10, y:4.5–9) */
+    [8.0,6.5],[9.5,5.2],[7.5,8.0],[9.0,7.5],[8.8,5.8],[7.2,6.0],[9.8,8.5],[8.5,9.0],[7.8,4.8],[9.2,7.0],
 ];
 
 const setActive = id => ['presetBtn','randomBtn','customBtn']
