@@ -670,8 +670,7 @@ function loadData(arr) {
 
     renderTable(null);
     document.getElementById('ds-summary').innerHTML =
-        `<b>${ROWS.length}</b> rows · <b>${FEATURES.length}</b> features · target <b>${TARGET}</b><br>` +
-        FEATURES.map(f => `${f}<span class="text-secondary">(${FEATURE_TYPE[f][0]})</span>`).join(', ');
+        `<b>${ROWS.length}</b> rows · <b>${FEATURES.length}</b> features · target <b>${TARGET}</b><br>`;
 
     STEPS = []; cursor = -1;
     document.getElementById('calc').innerHTML =
